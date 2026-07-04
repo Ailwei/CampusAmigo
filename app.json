@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "CampusAmigo",
+    "slug": "CampusAmigo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "campusamigo",
+    "extra": {
+  "BASE_URL": "http://10.0.2.2:5001/campus-amigo/us-central1/api",
+  "WEB_CLIENT_ID": "273611478058-hc5puudslpnhskl19ma0n2n2riv38s6j.apps.googleusercontent.com",
+  "router": {
+    "appRoot": "app"
+  }
+}
+,
+  
+    "userInterfaceStyle": "automatic",
+   
+    "android": {
+       "package": "com.campusamigo.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#208AEF",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 176
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}
