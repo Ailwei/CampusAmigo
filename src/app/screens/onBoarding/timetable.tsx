@@ -1,22 +1,22 @@
-import { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  Pressable,
-  Platform,
-  Alert,
-} from "react-native";
-import { Picker } from "@react-native-picker/picker";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import { router } from "expo-router";
 import COLORS from "@/constants/color";
-import { useOnboarding } from "@/app/context/onboardingContext";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { ClassItem, useOnboarding } from "@/context/onboardingContext";
 import api from "@/utils/api";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { Picker } from "@react-native-picker/picker";
+import { router } from "expo-router";
+import { useEffect, useState } from "react";
+import {
+  Alert,
+  FlatList,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
-const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+const DAYS = ["Mon", "Tues", "Wed", "Thurs", "Fri", "Sat", "Sun"];
 
 const toDate = (time: string) => {
   const [h, m] = time.split(":").map(Number);
@@ -34,16 +34,39 @@ const toTimeString = (date: Date) => {
 export default function Timetable() {
   const { classes, timetable, setTimetable } = useOnboarding();
 
-  const [subject, setSubject] = useState(classes[0] || "");
+  const [subject, setSubject] = useState<ClassItem | null>(classes[0] || null);
   const [day, setDay] = useState("Monday");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
 
+  const handleNext = () => {
+    const missingSubjects = classes.filter(
+      (cls) =>
+        !timetable.some(
+          (slot) =>
+            slot.subject.name === cls.name &&
+            slot.subject.code === cls.code
+        )
+    );
+
+    if (missingSubjects.length > 0) {
+      Alert.alert(
+        "Incomplete Timetable",
+        `Please add these subjects to your timetable before continuing:\n\n${missingSubjects
+          .map((subject) => `• ${subject.name}`)
+          .join("\n")}`
+      );
+      return;
+    }
+
+    router.push("/screens/onBoarding/summary");
+  };
   useEffect(() => {
     const loadTimetable = async () => {
       try {
+
         const res = await api.get("/onboarding/view-time-table");
         if (res.data.success) {
           setTimetable(res.data.data.timetable);
@@ -80,9 +103,10 @@ export default function Timetable() {
         endTime,
       });
       if (res.data.success) {
-              console.log(res.data)
+        console.log(res.data)
 
         setTimetable(res.data.data.timetable);
+        setSubject(null);
         setStartTime("");
         setEndTime("");
         Alert.alert("Success", "Class slot added");
@@ -99,12 +123,25 @@ export default function Timetable() {
 
       <Text style={styles.label}>Subject</Text>
       <View style={styles.pickerContainer}>
-        <Picker selectedValue={subject} onValueChange={(value) => setSubject(value)}>
+        <Picker
+          selectedValue={subject}
+          onValueChange={(value) => setSubject(value)}
+        >
           {classes.map((item) => (
-            <Picker.Item key={item} label={item} value={item} />
+            <Picker.Item
+              key={item.name}
+              label={item.name}
+              value={item}
+            />
           ))}
         </Picker>
       </View>
+      <Text style={styles.label}>Code</Text>
+      <View style={styles.codeBox}>
+        <Text style={styles.codeText}>{subject?.code || "N/A"}</Text>
+      </View>
+
+
 
       <Text style={styles.label}>Day</Text>
       <View style={styles.pickerContainer}>
@@ -158,7 +195,7 @@ export default function Timetable() {
           <View style={styles.card}>
             <View style={styles.cardHeader}>
               <MaterialCommunityIcons name="book-open-page-variant" size={20} color={COLORS.blue} />
-              <Text style={styles.subject}>{item.subject}</Text>
+              <Text style={styles.subject}>{item.subject.name}({item.subject.code})</Text>
             </View>
             <View style={styles.cardRow}>
               <Ionicons name="calendar-outline" size={16} color={COLORS.navySoft} />
@@ -174,7 +211,7 @@ export default function Timetable() {
 
       <Pressable
         style={styles.nextButton}
-        onPress={() => router.push("/screens/onBoarding/summary")}
+        onPress={handleNext}
       >
         <Ionicons name="arrow-forward-circle" size={22} color="#fff" />
         <Text style={styles.nextButtonText}>Next</Text>
@@ -243,5 +280,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: 20,
   },
+  codeBox: {
+    borderWidth: 1,
+    borderColor: COLORS.navySoft,
+    borderRadius: 10,
+    backgroundColor: "#F9FAFB",
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 10,
+  },
+  codeText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: COLORS.navy,
+  },
+
   nextButtonText: { color: "#fff", fontWeight: "700", fontSize: 16, marginLeft: 8 },
 });

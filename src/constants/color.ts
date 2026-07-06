@@ -11,6 +11,13 @@ const COLORS = {
   card: '#FFFFFF',
   ring: 'rgba(47,111,224,0.28)',
   ring2: 'rgba(247,134,12,0.22)',
+  red:'rgba(243, 10, 10, 0.22)',
+
+  paper: '#F7F8FC',
+  rule: '#E7EAF2',
+  ruleSoft: '#F0F2F8',
+  today: '#EEF2FF',
+  now: '#FF6B4A',
 };
 
 export default COLORS;
@@ -26,4 +33,3 @@ export const getSubjectColor = (subject: string): string => {
   const key: ColorKey = COLOR_KEYS[hash % COLOR_KEYS.length];
   return COLORS[key];
 };
-

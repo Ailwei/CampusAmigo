@@ -1,34 +1,44 @@
-import { View, Text, Pressable, StyleSheet, Image, Alert } from "react-native";
-import { router } from "expo-router";
 import COLORS from "@/constants/color";
 import { googleAuthFlow } from "@/flow/authFlow";
-import { getUserProfile } from "@/utils/user";
-import { saveToken } from "@/utils/token";
+import { clearAuthSession, saveToken } from "@/utils/token";
+import { router } from "expo-router";
+import { useState } from "react";
+import { Alert, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { useUser } from "../../context/userContext";
 
 export default function GetStartedScreen() {
-  const handleGoogleLogin = async () => {
+  const [loading, setLoading] = useState(false);
+const { loadUser } = useUser();
+
+
+const handleGoogleLogin = async () => {
+  if (loading) return;
+
   try {
+    setLoading(true);
+
     const res = await googleAuthFlow();
-    const user = res?.user;
     const token = res?.token;
 
-    if (!user || !token) throw new Error("Missing user data");
+    if (!token) throw new Error("Missing token");
 
+    await clearAuthSession();
     await saveToken({ token });
 
-    const profile = await getUserProfile();
+    const profile = await loadUser();
 
     if (profile.onboardingCompleted) {
       router.replace("/screens/(tabs)/home");
     } else {
       router.replace("/screens/onBoarding/add-classes");
     }
+
   } catch (err: any) {
     Alert.alert("Google login failed", err.message);
+  } finally {
+    setLoading(false);
   }
 };
-
-
   return (
     <View style={styles.container}>
       <View style={styles.logoContainer}>

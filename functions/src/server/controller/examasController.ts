@@ -12,17 +12,18 @@ export const addExamController = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.userId;
     const { subject, code, date, venue, progress } = req.body;
+    console.log(req.body)
 
     if (!userId) return fail(res, "Unauthorized", 401);
-    if (!subject || !code || !date || !venue) {
-      return fail(res, "Subject, code, date, and venue are required", 400);
+    if (!subject) {
+      return fail(res, "Subject is required", 400);
     }
 
     const exam = {
       subject,
-      code,
-      date,
-      venue,
+      code: code ?? "",
+      date: date,
+      venue: venue ?? "",
       progress: progress ?? 0,
       createdAt: Date.now(),
     };
@@ -56,7 +57,6 @@ export const getExamsController = async (req: AuthRequest, res: Response) => {
     const userData = userSnap.data();
     const exams = userData?.exams || [];
 
-    // Sort by exam date ascending
     const sorted = exams.sort(
       (a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime()
     );

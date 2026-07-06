@@ -1,9 +1,9 @@
 import { CommonActions } from "@react-navigation/native";
-import { removeToken } from "./token";
+import { clearAuthSession } from "./token";
 
 export const logoutUser = async (navigation: any) => {
   try {
-    await removeToken();
+    await clearAuthSession();
     navigation.dispatch(
       CommonActions.reset({
         index: 0,

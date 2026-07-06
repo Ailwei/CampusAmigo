@@ -1,31 +1,32 @@
-import { useState, useEffect } from "react";
-import { View, Text, StyleSheet, ScrollView, Pressable, Alert } from "react-native";
-import { router } from "expo-router";
 import COLORS from "@/constants/color";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { ClassItem, ClassSlot } from "@/context/onboardingContext";
 import api from "@/utils/api";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import { useEffect, useState } from "react";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 export default function Summary() {
-  const [classes, setClasses] = useState<string[]>([]);
-  const [timetable, setTimetable] = useState<any[]>([]);
+  const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [timetable, setTimetable] = useState<ClassSlot[]>([]);
   const [loading, setLoading] = useState(true);
 
-useEffect(() => {
-  const loadSummary = async () => {
-    try {
-      const res = await api.get("/onboarding/summary");
-      if (res.data.success) {
-        setClasses(res.data.data.classes || []);
-        setTimetable(res.data.data.timetable || []);
+  useEffect(() => {
+    const loadSummary = async () => {
+      try {
+        const res = await api.get("/onboarding/summary");
+        if (res.data.success) {
+          setClasses(res.data.data.classes || []);
+          setTimetable(res.data.data.timetable || []);
+        }
+      } catch (error: any) {
+        Alert.alert("Error", error?.response?.data?.message || "Failed to load summary");
+      } finally {
+        setLoading(false);
       }
-    } catch (error: any) {
-      Alert.alert("Error", error?.response?.data?.message || "Failed to load summary");
-    } finally {
-      setLoading(false);
-    }
-  };
-  loadSummary();
-}, []);
+    };
+    loadSummary();
+  }, []);
 
 
   if (loading) {
@@ -56,13 +57,15 @@ useEffect(() => {
           classes.map((subject, index) => (
             <View key={index} style={styles.subjectCard}>
               <Ionicons name="book-outline" size={20} color={COLORS.navySoft} />
-              <Text style={styles.subjectText}>{subject}</Text>
+              <Text style={styles.subjectText}>
+                {subject.name} ({subject.code})
+              </Text>
+
             </View>
           ))
         )}
       </View>
 
-      {/* Timetable */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Ionicons name="calendar-outline" size={22} color={COLORS.blue} />
@@ -73,7 +76,10 @@ useEffect(() => {
         ) : (
           timetable.map((item, index) => (
             <View key={index} style={styles.classCard}>
-              <Text style={styles.classSubject}>{item.subject}</Text>
+              <Text style={styles.classSubject}>
+                {item.subject.name} ({item.subject.code})
+              </Text>
+
               <View style={styles.classInfoRow}>
                 <Ionicons name="time-outline" size={16} color={COLORS.navySoft} />
                 <Text style={styles.classInfo}>
@@ -85,7 +91,6 @@ useEffect(() => {
         )}
       </View>
 
-      {/* Deadlines placeholder */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Ionicons name="document-text-outline" size={22} color={COLORS.blue} />
@@ -96,7 +101,6 @@ useEffect(() => {
         </View>
       </View>
 
-      {/* Exams placeholder */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Ionicons name="school-outline" size={22} color={COLORS.blue} />

@@ -1,19 +1,27 @@
-import { useState, useEffect } from "react";
-import { View, Text, StyleSheet, ScrollView, Pressable, Alert } from "react-native";
-import { router } from "expo-router";
+import DeadlineList from "@/components/deadline-list";
+import ExamList from "@/components/exam-list";
 import COLORS from "@/constants/color";
-import { MaterialCommunityIcons, Ionicons, Feather } from "@expo/vector-icons";
+import { ClassItem, ClassSlot } from "@/context/onboardingContext";
 import api from "@/utils/api";
+import { moderateScale, scaleSize, verticalScale } from "@/utils/responsive";
+import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import { useEffect, useState } from "react";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
 export default function Home() {
-  const [classes, setClasses] = useState<string[]>([]);
-  const [timetable, setTimetable] = useState<any[]>([]);
+  const { width } = useWindowDimensions();
+  const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [timetable, setTimetable] = useState<ClassSlot[]>([]);
+
   const [loading, setLoading] = useState(true);
+  const isCompact = width < 380;
 
   useEffect(() => {
     const loadSummary = async () => {
       try {
         const res = await api.get("/onboarding/summary");
+        console.log(res.data)
         if (res.data.success) {
           setClasses(res.data.data.classes || []);
           setTimetable(res.data.data.timetable || []);
@@ -30,6 +38,7 @@ export default function Home() {
   const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
   const todaysClasses = timetable.filter((item) => item.day === today);
 
+
   if (loading) {
     return (
       <View style={styles.container}>
@@ -40,20 +49,20 @@ export default function Home() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
-      <Text style={styles.greeting}>Welcome Back Marwa!</Text>
+      <Text style={styles.greeting}>Welcome Back Ailwei</Text>
       <Text style={styles.notification}>
         You have {todaysClasses.length} class{todaysClasses.length !== 1 ? "es" : ""} today.
       </Text>
 
-      <View style={styles.statsContainer}>
+      <View style={[styles.statsContainer, isCompact && styles.statsContainerCompact]}>
         <View style={styles.card}>
-          <MaterialCommunityIcons name="book-education" size={30} color={COLORS.blue} />
+          <MaterialCommunityIcons name="book-education" size={moderateScale(28, 0.4, width)} color={COLORS.blue} />
           <Text style={styles.number}>{classes.length}</Text>
           <Text style={styles.label}>Subjects</Text>
         </View>
 
         <View style={styles.card}>
-          <Ionicons name="calendar-outline" size={30} color={COLORS.orange} />
+          <Ionicons name="calendar-outline" size={moderateScale(28, 0.4, width)} color={COLORS.orange} />
           <Text style={styles.number}>{timetable.length}</Text>
           <Text style={styles.label}>Classes</Text>
         </View>
@@ -68,7 +77,10 @@ export default function Home() {
             <View key={index} style={styles.classCard}>
               <View style={styles.classHeader}>
                 <MaterialCommunityIcons name="book-open-page-variant" size={20} color={COLORS.blue} />
-                <Text style={styles.subject}>{item.subject}</Text>
+                <Text style={styles.subject}>
+                  {item.subject.name} ({item.subject.code})
+                </Text>
+
               </View>
               <View style={styles.timeRow}>
                 <Feather name="clock" size={16} color={COLORS.navySoft} />
@@ -91,12 +103,12 @@ export default function Home() {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Upcoming Deadlines</Text>
-        <Text style={styles.empty}>No deadlines yet.</Text>
+        <DeadlineList />
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Upcoming Exams</Text>
-        <Text style={styles.empty}>No exams scheduled.</Text>
+        <ExamList />
       </View>
 
       <Pressable style={styles.scheduleButton} onPress={() => router.push("/screens/weeklyTimeTable")}>
@@ -109,46 +121,49 @@ export default function Home() {
 
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.bgTop, padding: 20 },
-  greeting: { fontSize: 28, fontWeight: "800", color: COLORS.navy },
-  notification: { marginTop: 8,alignItems:"center", color: COLORS.orange, fontWeight: "600", marginBottom: 20 },
-  statsContainer: { flexDirection: "row", justifyContent: "space-between", marginBottom: 25 },
+  container: { flex: 1, backgroundColor: COLORS.bgTop, paddingHorizontal: scaleSize(20), paddingTop: verticalScale(20), paddingBottom: verticalScale(24) },
+  greeting: { fontSize: moderateScale(28), fontWeight: "800", color: COLORS.navy },
+  notification: { marginTop: verticalScale(8), alignItems: "center", color: COLORS.orange, fontWeight: "600", marginBottom: verticalScale(20) },
+  statsContainer: { flexDirection: "row", justifyContent: "space-between", marginBottom: verticalScale(25), gap: scaleSize(10) },
+  statsContainerCompact: { flexDirection: "column" },
   card: {
     flex: 1,
     backgroundColor: "#fff",
-    marginHorizontal: 5,
-    padding: 18,
-    borderRadius: 12,
+    padding: moderateScale(16),
+    borderRadius: scaleSize(12),
     alignItems: "center",
+    minHeight: verticalScale(110),
+    justifyContent: "center",
   },
-  number: { fontSize: 28, fontWeight: "700", color: COLORS.blue },
-  label: { marginTop: 6, color: COLORS.navySoft },
-  section: { marginBottom: 24 },
-  sectionTitle: { fontSize: 18, fontWeight: "700", color: COLORS.blue, marginBottom: 10 },
-  classCard: { backgroundColor: "#fff", padding: 15, borderRadius: 12, marginBottom: 10 },
-  classHeader: { flexDirection: "row", alignItems: "center", marginBottom: 6 },
-  subject: { fontSize: 16, fontWeight: "700", color: COLORS.navy, marginLeft: 8 },
+  number: { fontSize: moderateScale(24), fontWeight: "700", color: COLORS.blue, marginTop: verticalScale(6) },
+  label: { marginTop: verticalScale(4), color: COLORS.navySoft, textAlign: "center" },
+  section: { marginBottom: verticalScale(24) },
+  sectionTitle: { fontSize: moderateScale(18), fontWeight: "700", color: COLORS.blue, marginBottom: verticalScale(10) },
+  classCard: { backgroundColor: "#fff", padding: moderateScale(14), borderRadius: scaleSize(12), marginBottom: verticalScale(10) },
+  classHeader: { flexDirection: "row", alignItems: "center", marginBottom: verticalScale(6) },
+  subject: { fontSize: moderateScale(15), fontWeight: "700", color: COLORS.navy, marginLeft: scaleSize(8), flexShrink: 1 },
   timeRow: { flexDirection: "row", alignItems: "center" },
-  time: { marginLeft: 6, color: COLORS.navySoft },
+  time: { marginLeft: scaleSize(6), color: COLORS.navySoft, flexShrink: 1 },
   empty: { color: COLORS.navySoft, fontStyle: "italic" },
   banner: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#fff",
-    padding: 14,
-    borderRadius: 12,
-    marginBottom: 24,
+    padding: moderateScale(14),
+    borderRadius: scaleSize(12),
+    marginBottom: verticalScale(24),
   },
-  bannerTitle: { fontSize: 16, fontWeight: "700", color: COLORS.navy },
-  bannerText: { fontSize: 13, color: COLORS.navySoft },
+  bannerTitle: { fontSize: moderateScale(15), fontWeight: "700", color: COLORS.navy },
+  bannerText: { fontSize: moderateScale(13), color: COLORS.navySoft, marginTop: verticalScale(2) },
   scheduleButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: COLORS.blue,
-    borderRadius: 14,
-    padding: 14,
-    marginTop: 10,
+    borderRadius: scaleSize(14),
+    paddingVertical: verticalScale(14),
+    paddingHorizontal: scaleSize(16),
+    marginTop: verticalScale(10),
   },
-  scheduleButtonText: { color: "#fff", fontWeight: "700", fontSize: 16, marginLeft: 8 },
+  scheduleButtonText: { color: "#fff", fontWeight: "700", fontSize: moderateScale(15), marginLeft: scaleSize(8) },
 });

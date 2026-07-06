@@ -1,7 +1,6 @@
 import axios from "axios";
 import Constants from "expo-constants";
-import { getToken } from "./token";
-import { logoutUser } from "./auth";
+import { clearAuthSession, getToken } from "./token";
 
 const BASE_URL = Constants.expoConfig?.extra?.BASE_URL;
 
@@ -27,8 +26,9 @@ api.interceptors.request.use(async (config) => {
 
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
+  async (error) => {
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      await clearAuthSession();
     }
     return Promise.reject(error);
   }

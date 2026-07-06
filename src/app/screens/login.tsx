@@ -1,45 +1,55 @@
-import { View, Text, TextInput, Pressable, StyleSheet, Image, Alert } from "react-native";
-import { router } from "expo-router";
 import COLORS from "@/constants/color";
 import api from "@/utils/api";
+import { clearAuthSession, saveToken } from "@/utils/token";
+import { router } from "expo-router";
 import { useState } from "react";
-import { saveToken } from "@/utils/token"; 
+import { Alert, Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { useUser } from "../../context/userContext";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+const { loadUser } = useUser();
 
-  const handleLogin = async () => {
-    try {
-      if (!email || !password) {
-        Alert.alert("Missing fields", "Please fill in email and password");
-        return;
-      }
-
-      const loginUser = await api.post("/auth/login", { email, password });
-      const token = loginUser.data?.data?.token;
-      const user = loginUser.data?.data?.user;
-
-      if (!token) {
-        Alert.alert("Error", "No token received from server");
-        return;
-      }
-
-      await saveToken({ token });
-
-      if (user?.onboardingCompleted) {
-        router.replace("/screens/(tabs)/home");
-      } else {
-        router.replace("/screens/onBoarding/add-classes");
-      }
-    } catch (error: any) {
-      console.log("Login failed:", error?.response?.data || error.message);
-      Alert.alert(
-        "Login failed",
-        error?.response?.data?.message || "Something went wrong"
-      );
+ const handleLogin = async () => {
+  try {
+    if (!email || !password) {
+      Alert.alert("Missing fields", "Please fill in email and password");
+      return;
     }
-  };
+
+    const loginUser = await api.post("/auth/login", { email, password });
+    const token = loginUser.data?.data?.token;
+
+    if (!token) {
+      Alert.alert("Error", "No token received from server");
+      return;
+    }
+
+    await clearAuthSession();
+    await saveToken({ token });
+
+    const profile = await loadUser();
+
+    if (!profile) {
+      throw new Error("Failed to load user profile");
+    }
+
+    if (profile.onboardingCompleted) {
+      router.replace("/screens/(tabs)/home");
+    } else {
+      router.replace("/screens/onBoarding/add-classes");
+    }
+
+  } catch (error: any) {
+    console.log("Login failed:", error?.response?.data || error.message);
+
+    Alert.alert(
+      "Login failed",
+      error?.response?.data?.message || "Something went wrong"
+    );
+  }
+};
 
   return (
     <View style={styles.container}>

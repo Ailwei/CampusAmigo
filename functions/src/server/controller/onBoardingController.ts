@@ -11,6 +11,7 @@ const fail = (res: Response, message: string, status = 400) =>
 export const saveClassesController = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.userId;
+    
     const { classes } = req.body;
 
     if (!userId) {
@@ -21,6 +22,16 @@ export const saveClassesController = async (req: AuthRequest, res: Response) => 
       return fail(res, "Classes array is required", 400);
     }
 
+    const formattedClasses = classes.map((cls: any) => {
+      if (typeof cls === "string") {
+        return { name: cls, code: "" };
+      }
+      return {
+        name: cls.name,
+        code: cls.code || "",
+      };
+    });
+
     const userRef = db.collection("users").doc(userId);
     const userSnap = await userRef.get();
 
@@ -29,7 +40,7 @@ export const saveClassesController = async (req: AuthRequest, res: Response) => 
     }
 
     await userRef.update({
-      classes,
+      classes: formattedClasses,
       onboardingCompleted: true,
       updatedAt: Date.now(),
     });
@@ -45,6 +56,7 @@ export const saveClassesController = async (req: AuthRequest, res: Response) => 
     return fail(res, (error as any)?.message || "Internal server error", 500);
   }
 };
+
 export const saveTimetableController = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.userId;
@@ -134,7 +146,6 @@ export const getWeeklyCalendarController = async (req: AuthRequest, res: Respons
     const userData = userSnap.data();
     const timetable = userData?.timetable || [];
 
-    // Optionally sort timetable by day and startTime
     const toMinutes = (t: string) => {
       const [h, m] = t.split(":").map(Number);
       return h * 60 + m;

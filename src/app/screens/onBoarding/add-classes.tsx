@@ -1,18 +1,18 @@
-import { useState, useEffect } from "react";
+import COLORS from "@/constants/color";
+import { useOnboarding } from "@/context/onboardingContext";
+import api from "@/utils/api";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import { useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
+  Alert,
   FlatList,
   Pressable,
+  StyleSheet,
+  Text,
   TextInput,
-  Alert,
+  View,
 } from "react-native";
-import { router } from "expo-router";
-import COLORS from "@/constants/color";
-import { useOnboarding } from "@/app/context/onboardingContext";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import api from "@/utils/api";
 
 export default function AddClasses() {
   const { classes, setClasses } = useOnboarding();
@@ -23,26 +23,31 @@ export default function AddClasses() {
   const [newRoom, setNewRoom] = useState("");
 
   useEffect(() => {
-    const loadSubjects = async () => {
-      try {
-        const res = await api.get("/onboarding/classes");
-        if (res.data.success) {
-          setSubjects(res.data.data.classes);
-        }
-      } catch (error: any) {
-        Alert.alert("Error", error?.response?.data?.message || "Failed to load classes");
-      }
-    };
-    loadSubjects();
-  }, []);
+  const loadSubjects = async () => {
+    try {
+      const res = await api.get("/onboarding/classes");
 
-  const toggleClass = (subjectName: string) => {
-    if (classes.includes(subjectName)) {
-      setClasses(classes.filter((c) => c !== subjectName));
-    } else {
-      setClasses([...classes, subjectName]);
+      if (res.data.success) {
+        setSubjects(res.data.data.classes ?? []);
+      }
+    } catch (error: any) {
+      console.log("Load classes:", error?.response?.data || error.message);
+
+      setSubjects([]);
     }
   };
+
+  loadSubjects();
+}, []);
+  const toggleClass = (subject: { name: string; code: string; room: string }) => {
+  const exists = classes.find((c) => c.name === subject.name);
+  if (exists) {
+    setClasses(classes.filter((c) => c.name !== subject.name));
+  } else {
+    setClasses([...classes, subject]);
+  }
+};
+
 
   const addSubject = () => {
     const subject = newSubject.trim();
@@ -57,12 +62,12 @@ export default function AddClasses() {
 
     const newEntry = {
       name: subject,
-      code: newCode.trim() || "N/A",
-      room: newRoom.trim() || "N/A",
+      code: newCode?.trim() ?? "",
+      room: newRoom?.trim() ?? "",
     };
 
     setSubjects([...subjects, newEntry]);
-    setClasses([...classes, subject]);
+    setClasses([...classes, newEntry]);
     setNewSubject("");
     setNewCode("");
     setNewRoom("");
@@ -77,7 +82,6 @@ export default function AddClasses() {
 
       const res = await api.post("/onboarding/add-class", { classes });
       if (res.data.success) {
-        Alert.alert("Success", "Classes saved successfully");
         router.push("/screens/onBoarding/timetable");
       }
     } catch (error: any) {
@@ -115,39 +119,40 @@ export default function AddClasses() {
       </Pressable>
 
       <FlatList
-        style={{ marginTop: 20 }}
-        data={subjects}
-        keyExtractor={(item) => item.name}
-        renderItem={({ item }) => (
-          <Pressable
-            style={[
-              styles.subjectCard,
-              classes.includes(item.name) && styles.activeCard,
-            ]}
-            onPress={() => toggleClass(item.name)}
-          >
-            <View style={styles.subjectInfo}>
-              <MaterialCommunityIcons
-                name="book-open-page-variant"
-                size={24}
-                color={COLORS.blue}
-              />
-              <View style={{ marginLeft: 10 }}>
-                <Text style={styles.subjectName}>{item.name}</Text>
-                <Text style={styles.subjectMeta}>
-                  {item.code} • {item.room}
-                </Text>
-              </View>
-            </View>
+  style={{ marginTop: 20 }}
+  data={subjects}
+  keyExtractor={(item) => item.name}
+  renderItem={({ item }) => {
+    const isActive = classes.some((c) => c.name === item.name);
+    return (
+      <Pressable
+        style={[styles.subjectCard, isActive && styles.activeCard]}
+        onPress={() => toggleClass(item)}
+      >
+        <View style={styles.subjectInfo}>
+          <MaterialCommunityIcons
+            name="book-open-page-variant"
+            size={24}
+            color={COLORS.blue}
+          />
+          <View style={{ marginLeft: 10 }}>
+            <Text style={styles.subjectName}>{item.name}</Text>
+            <Text style={styles.subjectMeta}>
+              {item.code} • {item.room}
+            </Text>
+          </View>
+        </View>
 
-            {classes.includes(item.name) ? (
-              <Ionicons name="checkmark-circle" size={24} color={COLORS.blue} />
-            ) : (
-              <Ionicons name="ellipse-outline" size={24} color={COLORS.navySoft} />
-            )}
-          </Pressable>
+        {isActive ? (
+          <Ionicons name="checkmark-circle" size={24} color={COLORS.blue} />
+        ) : (
+          <Ionicons name="ellipse-outline" size={24} color={COLORS.navySoft} />
         )}
-      />
+      </Pressable>
+    );
+  }}
+/>
+
 
       <Pressable style={styles.nextButton} onPress={handleNext}>
         <Ionicons name="arrow-forward-circle" size={22} color="#fff" />

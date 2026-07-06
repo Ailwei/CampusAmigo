@@ -30,6 +30,8 @@ export const authMiddleware = (
       firstName: string;
     };
     req.user = decoded;
+    console.log("Decoded userId:", req.user?.userId);
+
     next(); 
   } catch (err) {
     console.error("JWT verification error:", err);

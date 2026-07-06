@@ -23,12 +23,16 @@ export const getToken = async () => {
   }
 };
 
-export const removeToken = async () => {
+export const clearAuthSession = async () => {
   try {
     await AsyncStorage.removeItem("token");
   } catch (error) {
-    console.log("Remove token error:", error);
+    console.log("Clear auth session error:", error);
   }
+};
+
+export const removeToken = async () => {
+  await clearAuthSession();
 };
 
 export const bootstrapAuth = async () => {

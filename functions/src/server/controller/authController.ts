@@ -33,7 +33,11 @@ export const createUserController = async (req: Request, res: Response) => {
     }
 
     const normalizedEmail = email.toLowerCase().trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+    if (!emailRegex.test(normalizedEmail)) {
+      return fail(res, "Please enter a valid email address", 400);
+    }
     const usersSnapshot = await db
       .collection("users")
       .where("email", "==", normalizedEmail)
@@ -57,9 +61,9 @@ export const createUserController = async (req: Request, res: Response) => {
       userId: docRef.id,
     }, 201);
   } catch (error) {
-  console.error("CREATE USER ERROR:", error);
-  return fail(res, (error as any)?.message || "Internal server error", 500);
-}
+    console.error("CREATE USER ERROR:", error);
+    return fail(res, (error as any)?.message || "Internal server error", 500);
+  }
 };
 
 export const googleLoginController = async (req: Request, res: Response) => {
@@ -79,7 +83,7 @@ export const googleLoginController = async (req: Request, res: Response) => {
     const userRef = db.collection("users").doc(profile.sub);
 
     const userSnap = await userRef.get();
-   const userData = userSnap.exists ? userSnap.data() : null;
+    const userData = userSnap.exists ? userSnap.data() : null;
 
     if (!userSnap.exists) {
       await userRef.set({
@@ -131,6 +135,11 @@ export const loginController = async (req: Request, res: Response) => {
 
   try {
     const normalizedEmail = email.toLowerCase().trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailRegex.test(normalizedEmail)) {
+      return fail(res, "Please enter a valid email address", 400);
+    }
 
     const userSnapshot = await db
       .collection("users")
@@ -189,9 +198,9 @@ export const forgotPasswordController = async (req: Request, res: Response) => {
 
     return ok(res, "If an account exists, a verification code has been sent");
   } catch (error) {
-  console.error(error);
-  return ok(res, "If an account exists, a verification code has been sent");
-}
+    console.error(error);
+    return ok(res, "If an account exists, a verification code has been sent");
+  }
 };
 
 export const resetPasswordController = async (req: Request, res: Response) => {
@@ -225,7 +234,7 @@ export const resetPasswordController = async (req: Request, res: Response) => {
       await doc.ref.update({
         attempts: (data.attempts || 0) + 1,
       });
-    
+
       return fail(res, "Invalid verification code", 400);
     }
 
@@ -256,31 +265,29 @@ export const resetPasswordController = async (req: Request, res: Response) => {
 export const getMeController = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.userId;
+    if (!userId) return fail(res, "Unauthorized", 401);
 
-    if (!userId) {
-      return fail(res, "Unauthorized", 401);
-    }
+    const userDoc = await db.collection("users").doc(userId).get();
+    if (!userDoc.exists) return fail(res, "User not found", 404);
 
-    const doc = await db.collection("users").doc(userId).get();
+    const user = userDoc.data();
 
-    if (!doc.exists) {
-      return fail(res, "User not found", 404);
-    }
+    const [classesSnap, timetableSnap] = await Promise.all([
+      db.collection("users").doc(userId).collection("classes").get(),
+      db.collection("users").doc(userId).collection("timetable").get(),
+    ]);
 
-    const data = doc.data();
-
-   
-    const fullName =
-      data?.name ||
-      [data?.firstName, data?.lastName].filter(Boolean).join(" "); 
+    const classes = classesSnap.docs.map(d => d.data());
+    const timetable = timetableSnap.docs.map(d => d.data());
 
     return ok(res, "User fetched", {
-      id: doc.id,
-      ...data,
-      name: fullName,
+      id: userDoc.id,
+      ...user,
+      classes,
+      timetable,
     });
+
   } catch (e) {
-    console.error(e);
     return fail(res, "Internal server error", 500);
   }
 };

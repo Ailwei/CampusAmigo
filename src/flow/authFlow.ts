@@ -1,6 +1,6 @@
 import { signInWithGoogle } from "@/utils/authGoogle";
+import { clearAuthSession, saveToken } from "@/utils/token";
 import { googleLogin } from "../services/authService";
-import { saveToken } from "@/utils/token";
 
 export const googleAuthFlow = async () => {
   const { idToken } = await signInWithGoogle();
@@ -21,6 +21,7 @@ export const googleAuthFlow = async () => {
     throw new Error("No token returned from server");
   }
 
+  await clearAuthSession();
   await saveToken({ token });
 
   return data;
