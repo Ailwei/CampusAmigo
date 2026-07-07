@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
     padding: moderateScale(12),
     marginBottom: verticalScale(10),
   },
-  subject: { fontSize: moderateScale(14), fontWeight: "700", color: COLORS.navy },
+  subject: { fontSize: moderateScale(14), fontWeight: "700", color: COLORS.orange },
   code: { fontSize: moderateScale(13), color: COLORS.navySoft, marginTop: verticalScale(2) },
-  meta: { fontSize: moderateScale(12), color: COLORS.navySoft, marginTop: verticalScale(6) },
+  meta: { fontSize: moderateScale(12), color: COLORS.green, marginTop: verticalScale(6) },
 });

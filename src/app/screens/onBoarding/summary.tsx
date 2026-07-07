@@ -28,11 +28,13 @@ export default function Summary() {
     loadSummary();
   }, []);
 
+   const today = new Date().toLocaleDateString("en-US", { weekday: "short" });
+  const todaysClasses = timetable.filter((item) => item.day.startsWith(today));
+ console.log("todays time tbamel", todaysClasses)
 
   if (loading) {
     return (
       <View style={styles.container}>
-        <Text style={styles.title}>Loading your summary...</Text>
       </View>
     );
   }
@@ -58,7 +60,7 @@ export default function Summary() {
             <View key={index} style={styles.subjectCard}>
               <Ionicons name="book-outline" size={20} color={COLORS.navySoft} />
               <Text style={styles.subjectText}>
-                {subject.name} ({subject.code})
+                {subject.name} {subject.code || ""}
               </Text>
 
             </View>
@@ -69,15 +71,15 @@ export default function Summary() {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Ionicons name="calendar-outline" size={22} color={COLORS.blue} />
-          <Text style={styles.sectionTitle}>Weekly Timetable</Text>
+          <Text style={styles.sectionTitle}>Today's Timetable</Text>
         </View>
-        {timetable.length === 0 ? (
+        {todaysClasses.length === 0 ? (
           <Text style={styles.empty}>No classes scheduled.</Text>
         ) : (
-          timetable.map((item, index) => (
+          todaysClasses.map((item, index) => (
             <View key={index} style={styles.classCard}>
               <Text style={styles.classSubject}>
-                {item.subject.name} ({item.subject.code})
+                {item.subject.name} {item.subject.code || ""}
               </Text>
 
               <View style={styles.classInfoRow}>
@@ -125,8 +127,8 @@ export default function Summary() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.bgTop },
   content: { padding: 24, paddingBottom: 50 },
-  title: { fontSize: 28, fontWeight: "800", color: COLORS.navy },
-  subtitle: { marginTop: 8, marginBottom: 24, fontSize: 15, color: COLORS.navySoft },
+  title: { fontSize: 28, fontWeight: "800", color: COLORS.navy, textAlign:"center" },
+  subtitle: { marginTop: 8, marginBottom: 24, fontSize: 15, color: COLORS.navySoft, textAlign: "center" },
   section: { marginBottom: 24 },
   sectionHeader: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
   sectionTitle: { fontSize: 18, fontWeight: "700", color: COLORS.blue, marginLeft: 8 },

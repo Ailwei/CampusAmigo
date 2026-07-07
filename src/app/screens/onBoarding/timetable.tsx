@@ -16,7 +16,7 @@ import {
   View,
 } from "react-native";
 
-const DAYS = ["Mon", "Tues", "Wed", "Thurs", "Fri", "Sat", "Sun"];
+export const DAYS = ["Mon", "Tues", "Wed", "Thurs", "Fri", "Sat", "Sun"];
 
 const toDate = (time: string) => {
   const [h, m] = time.split(":").map(Number);

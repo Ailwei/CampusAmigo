@@ -21,7 +21,7 @@ export default function Home() {
     const loadSummary = async () => {
       try {
         const res = await api.get("/onboarding/summary");
-        console.log(res.data)
+        console.log(res.data.data)
         if (res.data.success) {
           setClasses(res.data.data.classes || []);
           setTimetable(res.data.data.timetable || []);
@@ -35,14 +35,14 @@ export default function Home() {
     loadSummary();
   }, []);
 
-  const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
-  const todaysClasses = timetable.filter((item) => item.day === today);
+  const today = new Date().toLocaleDateString("en-US", { weekday: "short" });
+  const todaysClasses = timetable.filter((item) => item.day.startsWith(today));
 
 
   if (loading) {
     return (
       <View style={styles.container}>
-        <Text style={styles.greeting}>Loading your schedule...</Text>
+        <Text style={styles.greeting}>...</Text>
       </View>
     );
   }
@@ -78,7 +78,7 @@ export default function Home() {
               <View style={styles.classHeader}>
                 <MaterialCommunityIcons name="book-open-page-variant" size={20} color={COLORS.blue} />
                 <Text style={styles.subject}>
-                  {item.subject.name} ({item.subject.code})
+                  {item.subject.name}     {item.subject.code}
                 </Text>
 
               </View>
@@ -122,8 +122,8 @@ export default function Home() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.bgTop, paddingHorizontal: scaleSize(20), paddingTop: verticalScale(20), paddingBottom: verticalScale(24) },
-  greeting: { fontSize: moderateScale(28), fontWeight: "800", color: COLORS.navy },
-  notification: { marginTop: verticalScale(8), alignItems: "center", color: COLORS.orange, fontWeight: "600", marginBottom: verticalScale(20) },
+  greeting: { fontSize: moderateScale(28), fontWeight: "800", color: COLORS.navy, textAlign: "center" },
+  notification: { marginTop: verticalScale(8), alignItems: "center", color: COLORS.orange, fontWeight: "600", marginBottom: verticalScale(20), textAlign: "center" },
   statsContainer: { flexDirection: "row", justifyContent: "space-between", marginBottom: verticalScale(25), gap: scaleSize(10) },
   statsContainerCompact: { flexDirection: "column" },
   card: {
