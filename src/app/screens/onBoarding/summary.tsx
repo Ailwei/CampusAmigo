@@ -19,6 +19,7 @@ export default function Summary() {
           setClasses(res.data.data.classes || []);
           setTimetable(res.data.data.timetable || []);
         }
+        console.log("sumary", res.data.data)
       } catch (error: any) {
         Alert.alert("Error", error?.response?.data?.message || "Failed to load summary");
       } finally {

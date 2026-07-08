@@ -1,6 +1,8 @@
 import { Response } from "express";
 import { db } from "../firebase/firebase";
 import { AuthRequest } from "../midlwWare/middleWare";
+import { formatRetrievedEntry } from "../utils/formatter"
+
 
 const ok = (res: Response, message: string, data?: any, status = 200) =>
   res.status(status).json({ success: true, message, data });
@@ -117,9 +119,10 @@ export const getSummaryController = async (req: AuthRequest, res: Response) => {
     if (!userSnap.exists) return fail(res, "User not found", 404);
 
     const userData = userSnap.data();
+
     return ok(res, "Summary fetched successfully", {
-      classes: userData?.classes || [],
-      timetable: userData?.timetable || [],
+      classes: (userData?.classes || []).map(formatRetrievedEntry),
+      timetable: (userData?.timetable || []).map(formatRetrievedEntry),
     });
   } catch (error) {
     console.error("GET SUMMARY ERROR:", error);
@@ -128,17 +131,16 @@ export const getSummaryController = async (req: AuthRequest, res: Response) => {
 };
 
 
+
 export const getWeeklyCalendarController = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.userId;
-
     if (!userId) {
       return fail(res, "Unauthorized", 401);
     }
 
     const userRef = db.collection("users").doc(userId);
     const userSnap = await userRef.get();
-
     if (!userSnap.exists) {
       return fail(res, "User not found", 404);
     }
@@ -150,12 +152,15 @@ export const getWeeklyCalendarController = async (req: AuthRequest, res: Respons
       const [h, m] = t.split(":").map(Number);
       return h * 60 + m;
     };
-    const sortedTimetable = timetable.sort((a: any, b: any) => {
-      if (a.day === b.day) {
-        return toMinutes(a.startTime) - toMinutes(b.startTime);
-      }
-      return a.day.localeCompare(b.day);
-    });
+
+    const sortedTimetable = timetable
+      .sort((a: any, b: any) => {
+        if (a.day === b.day) {
+          return toMinutes(a.startTime) - toMinutes(b.startTime);
+        }
+        return a.day.localeCompare(b.day);
+      })
+      .map(formatRetrievedEntry);
 
     return ok(res, "Weekly timetable fetched", { timetable: sortedTimetable });
   } catch (error) {

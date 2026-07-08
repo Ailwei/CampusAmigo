@@ -5,13 +5,17 @@ import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
-type DeadlineItem = {
+type AssignmentItem = {
   title: string;
-  subject: string;
+  subject: {
+    name: string;
+  };
   due: string;
   progress?: number;
   createdAt?: string;
 };
+
+
 
 const daysLeft = (date: string) => {
   const today = new Date();
@@ -20,7 +24,7 @@ const daysLeft = (date: string) => {
 };
 
 export default function DeadlineList({ maxItems = 3 }: { maxItems?: number }) {
-  const [items, setItems] = useState<DeadlineItem[]>([]);
+  const [items, setItems] = useState<AssignmentItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadDeadlines = useCallback(async () => {
@@ -93,9 +97,14 @@ export default function DeadlineList({ maxItems = 3 }: { maxItems?: number }) {
         const left = daysLeft(item.due);
         return (
           <View key={`${item.title}-${index}`} style={styles.card}>
-            <Text style={styles.subject}>{item.subject}</Text>
+            <Text style={styles.subject}>
+              {item.subject?.name}
+            </Text>
             <Text style={styles.title}>{item.title}</Text>
-            <Text style={styles.meta}>Due {item.due} • {left <= 0 ? "Due today" : `${left} day${left === 1 ? "" : "s"} left`}</Text>
+            <Text style={styles.meta}>
+              Due {item.due} • {left <= 0 ? "Due today" : `${left} day${left === 1 ? "" : "s"} left`}
+            </Text>
+
           </View>
         );
       })}

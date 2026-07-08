@@ -17,7 +17,6 @@ import {
   TextInput,
   View,
 } from "react-native";
-
 const daysLeft = (date: string) => {
   const today = new Date();
   const examDate = new Date(date);
@@ -58,7 +57,7 @@ export default function ExamsScreen() {
             name: typeof item === "string" ? item : item?.name || "",
             code: typeof item === "string" ? "" : item?.code || "",
           }))
-          .filter((item:any) => item.name);
+          .filter((item: any) => item.name);
 
         const summaryRes = await api.get("/onboarding/summary");
         const summaryClasses = (summaryRes?.data?.data?.classes || [])
@@ -66,7 +65,7 @@ export default function ExamsScreen() {
             name: item?.name || "",
             code: item?.code || "",
           }))
-          .filter((item:any) => item.name);
+          .filter((item: any) => item.name);
 
         const merged = [...new Map([...profileClasses, ...summaryClasses].map((item) => [item.name, item])).values()];
         setSubjectOptions(merged);
@@ -76,7 +75,7 @@ export default function ExamsScreen() {
             name: typeof item === "string" ? item : item?.name || "",
             code: "",
           }))
-          .filter((item:any) => item.name);
+          .filter((item: any) => item.name);
         setSubjectOptions(fallback);
       }
     };
@@ -84,7 +83,6 @@ export default function ExamsScreen() {
     if (user) loadSubjectOptions();
   }, [user]);
 
-  // Auto-select first subject
   useEffect(() => {
     if (!newSubject && subjectOptions.length > 0) {
       const first = subjectOptions[0];
@@ -93,7 +91,6 @@ export default function ExamsScreen() {
     }
   }, [subjectOptions, newSubject]);
 
-  // Load exams
   useEffect(() => {
     const loadExams = async () => {
       try {
@@ -101,6 +98,8 @@ export default function ExamsScreen() {
         if (res.data.success && Array.isArray(res.data.data.exams)) {
           setExams(res.data.data.exams);
         }
+        console.log("exams", res.data.data)
+
       } catch (error: any) {
         Alert.alert("Error", error?.response?.data?.message || "Failed to load exams");
       } finally {
@@ -156,7 +155,6 @@ export default function ExamsScreen() {
 
   const sortedExams = [...exams].sort((a, b) => daysLeft(a.date) - daysLeft(b.date));
 
-  // ==================== LOADING ====================
   if (loading) {
     return (
       <View style={styles.centerContainer}>
@@ -187,39 +185,50 @@ export default function ExamsScreen() {
                 sortedExams.map((exam, index) => {
                   const left = daysLeft(exam.date);
                   return (
-                    <View key={`${exam.code || exam.createdAt}-${index}`} style={styles.card}>
-                      <View style={styles.topRow}>
-                        <View>
-                          <Text style={styles.subject}>{exam.subject}</Text>
-                          {exam.code && <Text style={styles.code}>{exam.code}</Text>}
+                    <Pressable
+                      onPress={() => console.log("Card clicked:", exam.code)}
+                      style={({ pressed }) => [
+                        pressed && { opacity: 0.7 }
+                      ]}
+                    >
+                      <View key={`${exam.code || exam.createdAt}-${index}`} style={styles.card}>
+
+                        <View style={styles.topRow}>
+                          <View>
+                            <Text style={styles.subject}>
+                              {exam.subject?.name} {exam.subject?.code ? `(${exam.subject.code})` : ""}
+                              {exam.subject?.room ? ` • Room ${exam.subject.room}` : ""}
+                            </Text>
+                            {exam.code && <Text style={styles.code}>{exam.code}</Text>}
+                          </View>
+                          <View style={[styles.badge, { backgroundColor: countdownColor(left) }]}>
+                            <Text style={styles.badgeText}>{left} days</Text>
+                          </View>
                         </View>
-                        <View style={[styles.badge, { backgroundColor: countdownColor(left) }]}>
-                          <Text style={styles.badgeText}>{left} days</Text>
+
+                        <View style={styles.infoRow}>
+                          <Ionicons name="calendar-outline" size={16} color="#687588" />
+                          <Text style={styles.info}>{exam.date}</Text>
                         </View>
-                      </View>
 
-                      <View style={styles.infoRow}>
-                        <Ionicons name="calendar-outline" size={16} color="#687588" />
-                        <Text style={styles.info}>{exam.date}</Text>
-                      </View>
+                        <View style={styles.infoRow}>
+                          <Ionicons name="location-outline" size={16} color="#687588" />
+                          <Text style={styles.info}>{exam.venue}</Text>
+                        </View>
 
-                      <View style={styles.infoRow}>
-                        <Ionicons name="location-outline" size={16} color="#687588" />
-                        <Text style={styles.info}>{exam.venue}</Text>
+                        <View style={styles.progressBackground}>
+                          <View style={[styles.progressFill, { width: `${exam.progress || 0}%` }]} />
+                        </View>
+                        <Text style={styles.progressText}>Revision {exam.progress || 0}%</Text>
                       </View>
+                    </Pressable>
 
-                      <View style={styles.progressBackground}>
-                        <View style={[styles.progressFill, { width: `${exam.progress || 0}%` }]} />
-                      </View>
-                      <Text style={styles.progressText}>Revision {exam.progress || 0}%</Text>
-                    </View>
                   );
                 })
               )}
             </>
           ) : (
             <View style={styles.form}>
-              {/* Subject Picker */}
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Subject</Text>
                 <Pressable style={styles.pickerTrigger} onPress={() => setShowSubjectPicker(!showSubjectPicker)}>
@@ -261,7 +270,6 @@ export default function ExamsScreen() {
                 style={[styles.input, styles.readOnlyField]}
               />
 
-              {/* Date Picker */}
               <Pressable style={styles.input} onPress={() => setShowDatePicker(true)}>
                 <Text style={{ color: newDate ? COLORS.navy : "#9CA3AF" }}>
                   {newDate ? newDate.toISOString().split("T")[0] : "Select Exam Date"}
@@ -295,7 +303,6 @@ export default function ExamsScreen() {
           )}
         </ScrollView>
 
-        {/* Fixed Button at Bottom */}
         {!showForm && (
           <View style={styles.bottomButtonContainer}>
             <Pressable style={styles.button} onPress={() => setShowForm(true)}>
@@ -330,6 +337,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: COLORS.navy,
     marginBottom: 20,
+    textAlign: "center"
   },
   card: {
     backgroundColor: "#fff",

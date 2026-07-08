@@ -15,6 +15,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export const DAYS = ["Mon", "Tues", "Wed", "Thurs", "Fri", "Sat", "Sun"];
 
@@ -34,8 +35,8 @@ const toTimeString = (date: Date) => {
 export default function Timetable() {
   const { classes, timetable, setTimetable } = useOnboarding();
 
-  const [subject, setSubject] = useState<ClassItem | null>(classes[0] || null);
-  const [day, setDay] = useState("Monday");
+  const [subject, setSubject] = useState<ClassItem | null>(null);
+  const [day, setDay] = useState<string>("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [showStartPicker, setShowStartPicker] = useState(false);
@@ -63,10 +64,10 @@ export default function Timetable() {
 
     router.push("/screens/onBoarding/summary");
   };
+
   useEffect(() => {
     const loadTimetable = async () => {
       try {
-
         const res = await api.get("/onboarding/view-time-table");
         if (res.data.success) {
           setTimetable(res.data.data.timetable);
@@ -91,7 +92,7 @@ export default function Timetable() {
   };
 
   const addClassSlot = async () => {
-    if (!subject || !startTime || !endTime) {
+    if (!subject || !day || !startTime || !endTime) {
       Alert.alert("Please complete all fields.");
       return;
     }
@@ -103,10 +104,9 @@ export default function Timetable() {
         endTime,
       });
       if (res.data.success) {
-        console.log(res.data)
+        console.log(res.data);
 
         setTimetable(res.data.data.timetable);
-        setSubject(null);
         setStartTime("");
         setEndTime("");
         Alert.alert("Success", "Class slot added");
@@ -117,80 +117,82 @@ export default function Timetable() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Create Your Weekly Timetable</Text>
-      <Text style={styles.subtitle}>Add each class to your weekly schedule.</Text>
-
-      <Text style={styles.label}>Subject</Text>
-      <View style={styles.pickerContainer}>
-        <Picker
-          selectedValue={subject}
-          onValueChange={(value) => setSubject(value)}
-        >
-          {classes.map((item) => (
-            <Picker.Item
-              key={item.name}
-              label={item.name}
-              value={item}
-            />
-          ))}
-        </Picker>
-      </View>
-      <Text style={styles.label}>Code</Text>
-      <View style={styles.codeBox}>
-        <Text style={styles.codeText}>{subject?.code || "N/A"}</Text>
-      </View>
-
-
-
-      <Text style={styles.label}>Day</Text>
-      <View style={styles.pickerContainer}>
-        <Picker selectedValue={day} onValueChange={(value) => setDay(value)}>
-          {DAYS.map((d) => (
-            <Picker.Item key={d} label={d} value={d} />
-          ))}
-        </Picker>
-      </View>
-
-      <Text style={styles.label}>Start Time</Text>
-      <Pressable style={styles.timeButton} onPress={() => setShowStartPicker(true)}>
-        <Ionicons name="time-outline" size={18} color={COLORS.navySoft} />
-        <Text style={styles.timeButtonText}>{startTime || "Select start time"}</Text>
-      </Pressable>
-      {showStartPicker && (
-        <DateTimePicker
-          value={toDate(startTime || "08:00")}
-          mode="time"
-          is24Hour={true}
-          display={Platform.OS === "ios" ? "spinner" : "default"}
-          onChange={handleStartChange}
-        />
-      )}
-
-      <Text style={styles.label}>End Time</Text>
-      <Pressable style={styles.timeButton} onPress={() => setShowEndPicker(true)}>
-        <Ionicons name="time-outline" size={18} color={COLORS.navySoft} />
-        <Text style={styles.timeButtonText}>{endTime || "Select end time"}</Text>
-      </Pressable>
-      {showEndPicker && (
-        <DateTimePicker
-          value={toDate(endTime || "09:00")}
-          mode="time"
-          is24Hour={true}
-          display={Platform.OS === "ios" ? "spinner" : "default"}
-          onChange={handleEndChange}
-        />
-      )}
-
-      <Pressable style={styles.addButton} onPress={addClassSlot}>
-        <Ionicons name="add-circle-outline" size={22} color="#fff" />
-        <Text style={styles.addButtonText}>Add Class</Text>
-      </Pressable>
-
-      <Text style={styles.heading}>Your Timetable</Text>
+    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right", "bottom"]}>
       <FlatList
+        style={styles.container}
+        contentContainerStyle={{ paddingBottom: 24 }}
         data={timetable}
         keyExtractor={(_, index) => index.toString()}
+        ListHeaderComponent={
+          <>
+            <Text style={styles.title}>Create Your Weekly Timetable</Text>
+            <Text style={styles.subtitle}>Add each class to your weekly schedule.</Text>
+
+            <Text style={styles.label}>Subject</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={subject}
+                onValueChange={(value) => setSubject(value)}
+              >
+                <Picker.Item label="Select subject" value={null} color={COLORS.navySoft} />
+                {classes.map((item) => (
+                  <Picker.Item key={item.name} label={item.name} value={item} />
+                ))}
+              </Picker>
+            </View>
+            <Text style={styles.label}>Code</Text>
+            <View style={styles.codeBox}>
+              <Text style={styles.codeText}>{subject?.code || "N/A"}</Text>
+            </View>
+
+            <Text style={styles.label}>Day</Text>
+            <View style={styles.pickerContainer}>
+              <Picker selectedValue={day} onValueChange={(value) => setDay(value)}>
+                <Picker.Item label="Select day" value="" color={COLORS.navySoft} />
+                {DAYS.map((d) => (
+                  <Picker.Item key={d} label={d} value={d} />
+                ))}
+              </Picker>
+            </View>
+
+            <Text style={styles.label}>Start Time</Text>
+            <Pressable style={styles.timeButton} onPress={() => setShowStartPicker(true)}>
+              <Ionicons name="time-outline" size={18} color={COLORS.navySoft} />
+              <Text style={styles.timeButtonText}>{startTime || "Select start time"}</Text>
+            </Pressable>
+            {showStartPicker && (
+              <DateTimePicker
+                value={toDate(startTime || "08:00")}
+                mode="time"
+                is24Hour={true}
+                display={Platform.OS === "ios" ? "spinner" : "default"}
+                onChange={handleStartChange}
+              />
+            )}
+
+            <Text style={styles.label}>End Time</Text>
+            <Pressable style={styles.timeButton} onPress={() => setShowEndPicker(true)}>
+              <Ionicons name="time-outline" size={18} color={COLORS.navySoft} />
+              <Text style={styles.timeButtonText}>{endTime || "Select end time"}</Text>
+            </Pressable>
+            {showEndPicker && (
+              <DateTimePicker
+                value={toDate(endTime || "09:00")}
+                mode="time"
+                is24Hour={true}
+                display={Platform.OS === "ios" ? "spinner" : "default"}
+                onChange={handleEndChange}
+              />
+            )}
+
+            <Pressable style={styles.addButton} onPress={addClassSlot}>
+              <Ionicons name="add-circle-outline" size={22} color="#fff" />
+              <Text style={styles.addButtonText}>Add Class</Text>
+            </Pressable>
+
+            <Text style={styles.heading}>Your Timetable</Text>
+          </>
+        }
         renderItem={({ item }) => (
           <View style={styles.card}>
             <View style={styles.cardHeader}>
@@ -207,21 +209,20 @@ export default function Timetable() {
             </View>
           </View>
         )}
+        ListFooterComponent={
+          <Pressable style={styles.nextButton} onPress={handleNext}>
+            <Ionicons name="arrow-forward-circle" size={22} color="#fff" />
+            <Text style={styles.nextButtonText}>Next</Text>
+          </Pressable>
+        }
       />
-
-      <Pressable
-        style={styles.nextButton}
-        onPress={handleNext}
-      >
-        <Ionicons name="arrow-forward-circle" size={22} color="#fff" />
-        <Text style={styles.nextButtonText}>Next</Text>
-      </Pressable>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, backgroundColor: COLORS.bgTop },
+  safeArea: { flex: 1, backgroundColor: COLORS.bgTop },
+  container: { flex: 1, paddingHorizontal: 24, paddingTop: 24, backgroundColor: COLORS.bgTop },
   title: { fontSize: 24, fontWeight: "800", color: COLORS.navy },
   subtitle: { marginTop: 10, marginBottom: 20, color: COLORS.navySoft },
 

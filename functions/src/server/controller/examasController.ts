@@ -1,6 +1,7 @@
 import { Response } from "express";
 import { db } from "../firebase/firebase";
 import { AuthRequest } from "../midlwWare/middleWare";
+import { formatRetrievedEntry } from "../utils/formatter";
 
 const ok = (res: Response, message: string, data?: any, status = 200) =>
   res.status(status).json({ success: true, message, data });
@@ -57,9 +58,11 @@ export const getExamsController = async (req: AuthRequest, res: Response) => {
     const userData = userSnap.data();
     const exams = userData?.exams || [];
 
-    const sorted = exams.sort(
-      (a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime()
-    );
+    const sorted = exams
+      .sort(
+        (a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime()
+      )
+      .map(formatRetrievedEntry);
 
     return ok(res, "Exams fetched", { exams: sorted });
   } catch (error) {
@@ -67,6 +70,7 @@ export const getExamsController = async (req: AuthRequest, res: Response) => {
     return fail(res, (error as any)?.message || "Internal server error", 500);
   }
 };
+
 
 export const updateExamProgressController = async (req: AuthRequest, res: Response) => {
   try {

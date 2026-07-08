@@ -3,16 +3,22 @@ import api from "@/utils/api";
 import { moderateScale, scaleSize, verticalScale } from "@/utils/responsive";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useRouter } from "expo-router"
 
 type ExamItem = {
-  subject: string;
+  subject: {
+    name: string;
+    code?: string;
+    room?: string;
+  };
   code: string;
   date: string;
   venue: string;
   progress?: number;
   createdAt?: string;
 };
+
 
 const daysLeft = (date: string) => {
   const today = new Date();
@@ -23,6 +29,7 @@ const daysLeft = (date: string) => {
 export default function ExamList({ maxItems = 3 }: { maxItems?: number }) {
   const [items, setItems] = useState<ExamItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   const loadExams = useCallback(async () => {
     setLoading(true);
@@ -93,12 +100,21 @@ export default function ExamList({ maxItems = 3 }: { maxItems?: number }) {
       {items.map((item, index) => {
         const left = daysLeft(item.date);
         return (
-          <View key={`${item.code}-${index}`} style={styles.card}>
-            <Text style={styles.subject}>{item.subject}</Text>
-            <Text style={styles.code}>{item.code}</Text>
-            <Text style={styles.meta}>Date {item.date} • {left <= 0 ? "Today" : `${left} day${left === 1 ? "" : "s"} left`}</Text>
-            {item.venue ? <Text style={styles.meta}>Venue {item.venue}</Text> : null}
-          </View>
+          <TouchableOpacity onPress={() => console.log("Exam card clicked:", item.code)}>
+            <View key={`${item.code}-${index}`} style={styles.card}>
+              <Text style={styles.subject}>
+                {item.subject?.name}
+                {item.subject?.code ? ` (${item.subject.code})` : ""}
+                {item.subject?.room ? ` • Room ${item.subject.room}` : ""}
+              </Text>
+              <Text style={styles.code}>{item.code}</Text>
+              <Text style={styles.meta}>
+                Date {item.date} • {left <= 0 ? "Today" : `${left} day${left === 1 ? "" : "s"} left`}
+              </Text>
+              {item.venue ? <Text style={styles.meta}>Venue {item.venue}</Text> : null}
+
+            </View>
+          </TouchableOpacity>
         );
       })}
     </View>
@@ -117,4 +133,5 @@ const styles = StyleSheet.create({
   subject: { fontSize: moderateScale(14), fontWeight: "700", color: COLORS.orange },
   code: { fontSize: moderateScale(13), color: COLORS.navySoft, marginTop: verticalScale(2) },
   meta: { fontSize: moderateScale(12), color: COLORS.green, marginTop: verticalScale(6) },
+
 });

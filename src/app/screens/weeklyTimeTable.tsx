@@ -23,26 +23,23 @@ export default function WeeklyCalendar() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadTimetable = async () => {
-      try {
-        const res = await api.get("/onboarding/view-time-table");
-        const fetchedTimetable = res?.data?.data?.timetable || [];
-        if (res.data.success) {
-          setTimetable(fetchedTimetable);
-        }
-      } catch (error) {
-        console.log("Failed to load timetable", error);
-      } finally {
-        setLoading(false);
+  const loadTimetable = async () => {
+    try {
+      const res = await api.get("/onboarding/view-time-table");
+      const fetchedTimetable = res?.data?.data?.timetable || [];
+      console.log("fetched", fetchedTimetable);
+      if (res.data.success) {
+        setTimetable(fetchedTimetable);
       }
-    };
-
-    if (timetable.length === 0) {
-      loadTimetable();
-    } else {
+    } catch (error) {
+      console.log("Failed to load timetable", error);
+    } finally {
       setLoading(false);
     }
-  }, [timetable.length, setTimetable]);
+  };
+
+  loadTimetable();
+}, []);
 
   if (loading) {
     return (

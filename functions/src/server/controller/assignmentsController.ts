@@ -1,6 +1,7 @@
 import { Response } from "express";
 import { db } from "../firebase/firebase";
 import { AuthRequest } from "../midlwWare/middleWare";
+import { formatRetrievedEntry } from "../utils/formatter";
 
 const ok = (res: Response, message: string, data?: any, status = 200) =>
   res.status(status).json({ success: true, message, data });
@@ -57,7 +58,7 @@ export const getAssignmentsController = async (req: AuthRequest, res: Response) 
 
     const sorted = assignments.sort(
       (a: any, b: any) => new Date(a.due).getTime() - new Date(b.due).getTime()
-    );
+    ).map(formatRetrievedEntry);
 
     return ok(res, "Assignments fetched", { assignments: sorted });
   } catch (error) {

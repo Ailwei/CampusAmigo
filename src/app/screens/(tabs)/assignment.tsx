@@ -82,12 +82,14 @@ export default function AssignmentsScreen() {
         ? typeof user.classes[0] === "string"
           ? user.classes[0]
           : user.classes[0]?.name || ""
-        : assignments.find((a) => a?.subject)?.subject || "";
+        : (() => {
+          const found = assignments.find((a) => a?.subject)?.subject;
+          return typeof found === "string" ? found : found?.name || "";
+        })();
 
       if (defaultSubject) setNewSubject(defaultSubject);
     }
   }, [showForm, subjectOptions, newSubject, user, assignments]);
-
   useEffect(() => {
     const loadAssignments = async () => {
       try {
@@ -177,25 +179,33 @@ export default function AssignmentsScreen() {
                   const left = daysLeft(item.due);
                   return (
                     <View key={item.createdAt} style={styles.card}>
-                      <View style={styles.topRow}>
-                        <View>
-                          <Text style={styles.subject}>{item.subject}</Text>
-                          <Text style={styles.title}>{item.title}</Text>
+                      <Pressable
+                        onPress={() => console.log("Card clicked:", item.code)}
+                        style={({ pressed }) => [
+                          pressed && { opacity: 0.7 }
+                        ]}
+                      >                      <View style={styles.topRow}>
+                          <View>
+                            <Text style={styles.subject}>{item.subject.name}</Text>
+                            <Text style={styles.title}>{item.title}</Text>
+                          </View>
+                          <View style={[styles.badge, { backgroundColor: countdownColor(left) }]}>
+                            <Text style={styles.badgeText}>{left <= 0 ? "Due!" : `${left} days`}</Text>
+                          </View>
                         </View>
-                        <View style={[styles.badge, { backgroundColor: countdownColor(left) }]}>
-                          <Text style={styles.badgeText}>{left <= 0 ? "Due!" : `${left} days`}</Text>
+
+                        <View style={styles.infoRow}>
+                          <Ionicons name="calendar-outline" size={16} color="#687588" />
+                          <Text style={styles.info}>{item.due}</Text>
                         </View>
-                      </View>
 
-                      <View style={styles.infoRow}>
-                        <Ionicons name="calendar-outline" size={16} color="#687588" />
-                        <Text style={styles.info}>{item.due}</Text>
-                      </View>
+                        <View style={styles.progressBackground}>
+                          <View style={[styles.progressFill, { width: `${item.progress || 0}%` }]} />
+                        </View>
 
-                      <View style={styles.progressBackground}>
-                        <View style={[styles.progressFill, { width: `${item.progress || 0}%` }]} />
-                      </View>
-                      <Text style={styles.progressText}>Progress {item.progress || 0}%</Text>
+                        <Text style={styles.progressText}>Progress {item.progress || 0}%</Text>
+                      </Pressable>
+
                     </View>
                   );
                 })
