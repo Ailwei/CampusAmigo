@@ -4,6 +4,8 @@ import api from "@/utils/api";
 import { useEffect, useState } from "react";
 import { Dimensions, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { scaleSize, moderateScale, verticalScale } from "@/utils/responsive";
+
 
 const HOURS = Array.from({ length: 12 }, (_, i) => `${8 + i}:00`);
 const DAYS = ["Mon", "Tues", "Wed", "Thurs", "Fri", "Sat", "Sun"];
@@ -137,9 +139,9 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#F4F7FC" },
   screen: { flex: 1, backgroundColor: "#F4F7FC" },
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
-  loadingText: { color: COLORS.navy, fontSize: 16, fontWeight: "600" },
+  loadingText: { color: COLORS.navy, fontSize: moderateScale(16), fontWeight: "600" },
 
-  gridRow: { flexDirection: "row", marginHorizontal: 12 },
+  gridRow: { flexDirection: "row", marginHorizontal: scaleSize(12) },
 
   dayLabelColumn: { width: DAY_LABEL_WIDTH },
   dayLabelCell: {
@@ -148,7 +150,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  dayText: { fontSize: 13, fontWeight: "600", color: "#7B8BAA" },
+  dayText: { fontSize: moderateScale(13), fontWeight: "600", color: "#7B8BAA" },
 
   row: { flexDirection: "row", height: ROW_HEIGHT },
 
@@ -158,51 +160,59 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E7ECF4",
     backgroundColor: "#FCFDFF",
-    padding: 6,
-    borderRadius: 10,
-    marginRight: 6,
+    padding: scaleSize(6),
+    borderRadius: scaleSize(10),
+    marginRight: scaleSize(6),
   },
-  classBlock: { borderRadius: 14, padding: 10, marginBottom: 6, borderLeftWidth: 5, flexDirection: "column", gap: 2 },
+  classBlock: {
+    borderRadius: scaleSize(14),
+    padding: scaleSize(10),
+    marginBottom: verticalScale(6),
+    borderLeftWidth: scaleSize(5),
+    flexDirection: "column",
+    gap: scaleSize(2),
+  },
   subject: {
     flex: 1,
-    fontSize: 15,
+    fontSize: moderateScale(15),
     fontWeight: "700",
     color: COLORS.navy,
-    marginRight: 8,
-  }, metaLine: { fontSize: 12, marginTop: 3 },
+    marginRight: scaleSize(8),
+  },
+  metaLine: { fontSize: moderateScale(12), marginTop: verticalScale(3) },
   timePill: {
     alignSelf: "flex-start",
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    marginTop: 6,
+    borderRadius: scaleSize(8),
+    paddingHorizontal: scaleSize(8),
+    paddingVertical: verticalScale(3),
+    marginTop: verticalScale(6),
   },
-  time: { fontSize: 11, fontWeight: "700" },
+  time: { fontSize: moderateScale(11), fontWeight: "700" },
 
   freeCell: {
     flex: 1,
-    borderRadius: 8,
+    borderRadius: scaleSize(8),
     backgroundColor: `${COLORS.red}15`,
   },
 
   bottomBorder: {
     borderTopWidth: 1,
     borderTopColor: "#E5E7EB",
-    height: 100,
+    height: verticalScale(100),
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: 1,
+    paddingBottom: verticalScale(1),
   },
   subjectRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    gap: 6,
+    gap: scaleSize(6),
   },
   code: {
-    fontSize: 14,
+    fontSize: moderateScale(14),
     fontWeight: "700",
     color: COLORS.green,
-  }
+  },
 });

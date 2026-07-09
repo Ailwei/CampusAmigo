@@ -17,6 +17,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { scaleSize, moderateScale, verticalScale } from "@/utils/responsive";
 
 const daysLeft = (date: string) => {
   const today = new Date();
@@ -184,7 +185,8 @@ export default function AssignmentsScreen() {
                         style={({ pressed }) => [
                           pressed && { opacity: 0.7 }
                         ]}
-                      >                      <View style={styles.topRow}>
+                      >                      
+                      <View style={styles.topRow}>
                           <View>
                             <Text style={styles.subject}>{item.subject.name}</Text>
                             <Text style={styles.title}>{item.title}</Text>
@@ -298,7 +300,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F6F8FC",
-    padding: 20,
+    padding: scaleSize(20),
   },
   centerContainer: {
     flex: 1,
@@ -307,116 +309,121 @@ const styles = StyleSheet.create({
     backgroundColor: "#F6F8FC",
   },
   loadingText: {
-    marginTop: 12,
-    fontSize: 16,
+    marginTop: verticalScale(12),
+    fontSize: moderateScale(16),
     color: COLORS.navySoft,
   },
   heading: {
-    fontSize: 26,
+    fontSize: moderateScale(26),
     fontWeight: "800",
     color: COLORS.navy,
-    marginBottom: 20,
+    marginBottom: verticalScale(20),
   },
   card: {
     backgroundColor: "#fff",
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 18,
+    borderRadius: scaleSize(18),
+    padding: scaleSize(18),
+    marginBottom: verticalScale(18),
     elevation: 3,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: verticalScale(2) },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowRadius: scaleSize(8),
   },
   topRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: verticalScale(10),
   },
-  subject: { fontSize: 16, fontWeight: "700", color: COLORS.navy },
-  title: { fontSize: 14, color: "#7A8599", marginTop: 2 },
-  badge: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 },
-  badgeText: { color: "#fff", fontWeight: "700" },
-  infoRow: { flexDirection: "row", alignItems: "center", marginTop: 5 },
-  info: { color: "#687588", marginLeft: 6 },
+  subject: { fontSize: moderateScale(16), fontWeight: "700", color: COLORS.navy },
+  title: { fontSize: moderateScale(14), color: "#7A8599", marginTop: verticalScale(2) },
+  badge: {
+    paddingHorizontal: scaleSize(14),
+    paddingVertical: verticalScale(8),
+    borderRadius: scaleSize(20),
+  },
+  badgeText: { color: "#fff", fontWeight: "700", fontSize: moderateScale(14) },
+  infoRow: { flexDirection: "row", alignItems: "center", marginTop: verticalScale(5) },
+  info: { color: "#687588", marginLeft: scaleSize(6), fontSize: moderateScale(14) },
   progressBackground: {
-    height: 10,
+    height: verticalScale(10),
     backgroundColor: "#E5E7EB",
-    borderRadius: 5,
+    borderRadius: scaleSize(5),
     overflow: "hidden",
-    marginTop: 18,
+    marginTop: verticalScale(18),
   },
-  progressFill: { height: 10, backgroundColor: COLORS.blue, borderRadius: 5 },
-  progressText: { marginTop: 8, fontWeight: "600", color: COLORS.navy },
+  progressFill: { height: verticalScale(10), backgroundColor: COLORS.blue, borderRadius: scaleSize(5) },
+  progressText: { marginTop: verticalScale(8), fontWeight: "600", color: COLORS.navy, fontSize: moderateScale(14) },
 
   emptyContainer: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 80,
+    paddingVertical: verticalScale(80),
   },
   empty: {
     color: COLORS.navySoft,
-    fontSize: 18,
+    fontSize: moderateScale(18),
     fontWeight: "600",
-    marginTop: 16,
+    marginTop: verticalScale(16),
   },
   emptySub: {
     color: "#94A3B8",
-    marginTop: 8,
+    marginTop: verticalScale(8),
+    fontSize: moderateScale(14),
   },
 
   form: {
     backgroundColor: "#fff",
-    padding: 20,
-    borderRadius: 16,
-    marginTop: 10,
+    padding: scaleSize(20),
+    borderRadius: scaleSize(16),
+    marginTop: verticalScale(10),
   },
   input: {
     borderWidth: 1,
     borderColor: "#ccc",
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 14,
+    borderRadius: scaleSize(10),
+    padding: scaleSize(14),
+    marginBottom: verticalScale(14),
   },
-  inputContainer: { marginBottom: 16 },
-  label: { fontSize: 14, fontWeight: "600", color: COLORS.navy, marginBottom: 6 },
+  inputContainer: { marginBottom: verticalScale(16) },
+  label: { fontSize: moderateScale(14), fontWeight: "600", color: COLORS.navy, marginBottom: verticalScale(6) },
   pickerTrigger: {
     borderWidth: 1,
     borderColor: "#ccc",
-    borderRadius: 10,
-    padding: 14,
+    borderRadius: scaleSize(10),
+    padding: scaleSize(14),
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     backgroundColor: "#fff",
   },
-  pickerText: { color: COLORS.navy, fontSize: 16 },
+  pickerText: { color: COLORS.navy, fontSize: moderateScale(16) },
   pickerBox: {
     borderWidth: 1,
     borderColor: "#ccc",
-    borderRadius: 10,
-    marginTop: 6,
+    borderRadius: scaleSize(10),
+    marginTop: verticalScale(6),
     backgroundColor: "#fff",
   },
-  optionRow: { padding: 14, borderBottomWidth: 1, borderBottomColor: "#F1F5F9" },
+  optionRow: { padding: scaleSize(14), borderBottomWidth: 1, borderBottomColor: "#F1F5F9" },
   optionRowActive: { backgroundColor: "#E8F1FF" },
-  optionText: { color: COLORS.navy, fontSize: 16 },
+  optionText: { color: COLORS.navy, fontSize: moderateScale(16) },
 
   button: {
     backgroundColor: COLORS.blue,
-    borderRadius: 14,
-    padding: 16,
+    borderRadius: scaleSize(14),
+    padding: scaleSize(16),
     alignItems: "center",
-    marginTop: 10,
+    marginTop: verticalScale(10),
   },
-  buttonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  buttonText: { color: "#fff", fontWeight: "700", fontSize: moderateScale(16) },
 
   bottomButtonContainer: {
     position: "absolute",
-    bottom: 20,
-    left: 20,
-    right: 20,
+    bottom: verticalScale(20),
+    left: scaleSize(20),
+    right: scaleSize(20),
   },
 });

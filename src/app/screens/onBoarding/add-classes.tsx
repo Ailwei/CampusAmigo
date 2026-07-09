@@ -1,6 +1,7 @@
 import COLORS from "@/constants/color";
 import { useOnboarding } from "@/context/onboardingContext";
 import api from "@/utils/api";
+import { moderateScale, scaleSize, verticalScale } from "@/utils/responsive";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
@@ -163,50 +164,93 @@ export default function AddClasses() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, backgroundColor: COLORS.bgTop },
-  title: { fontSize: 24, fontWeight: "800", color: COLORS.navy },
-  subtitle: { marginVertical: 12, color: COLORS.navySoft },
+  container: { 
+    flex: 1, 
+    padding: scaleSize(24), 
+    backgroundColor: COLORS.bgTop 
+  },
+  title: { 
+    fontSize: moderateScale(24), 
+    fontWeight: "800", 
+    color: COLORS.navy 
+  },
+  subtitle: { 
+    marginVertical: verticalScale(12), 
+    color: COLORS.navySoft, 
+    fontSize: moderateScale(15) 
+  },
   input: {
-    borderWidth: 1,
+    borderWidth: scaleSize(1),
     borderColor: COLORS.navySoft,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    borderRadius: moderateScale(10),
+    paddingHorizontal: scaleSize(14),
+    paddingVertical: verticalScale(12),
     backgroundColor: "#fff",
-    marginBottom: 12,
+    marginBottom: verticalScale(12),
+    elevation: 1,
+    width: "100%",
   },
   addButton: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: COLORS.blue,
-    padding: 14,
-    borderRadius: 10,
+    paddingVertical: verticalScale(14),
+    paddingHorizontal: scaleSize(20),
+    borderRadius: moderateScale(10),
     justifyContent: "center",
+    marginTop: verticalScale(8),
   },
-  addButtonText: { color: "#fff", fontWeight: "700", marginLeft: 8 },
+  addButtonText: { 
+    color: "#fff", 
+    fontWeight: "700", 
+    marginLeft: scaleSize(8), 
+    fontSize: moderateScale(15) 
+  },
   subjectCard: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     backgroundColor: "#fff",
-    padding: 14,
-    borderRadius: 12,
-    marginBottom: 10,
-    borderWidth: 1,
+    paddingVertical: verticalScale(14),
+    paddingHorizontal: scaleSize(14),
+    borderRadius: moderateScale(12),
+    marginBottom: verticalScale(10),
+    borderWidth: scaleSize(1),
     borderColor: "#E7ECF4",
   },
-  activeCard: { borderColor: COLORS.blue, backgroundColor: "#F0F8FF" },
-  subjectInfo: { flexDirection: "row", alignItems: "center" },
-  subjectName: { fontSize: 16, fontWeight: "700", color: COLORS.navy },
-  subjectMeta: { fontSize: 13, color: COLORS.navySoft },
+  activeCard: { 
+    borderColor: COLORS.blue, 
+    backgroundColor: "#F0F8FF" 
+  },
+  subjectInfo: { 
+    flexDirection: "row", 
+    alignItems: "center" 
+  },
+  subjectName: { 
+    fontSize: moderateScale(16), 
+    fontWeight: "700", 
+    color: COLORS.navy 
+  },
+  subjectMeta: { 
+    fontSize: moderateScale(13), 
+    color: COLORS.navySoft 
+  },
   nextButton: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: COLORS.orange,
-    padding: 14,
-    borderRadius: 10,
+    paddingVertical: verticalScale(14),
+    paddingHorizontal: scaleSize(20),
+    borderRadius: moderateScale(10),
     justifyContent: "center",
-    marginTop: 24,
+    marginTop: verticalScale(24),
+    zIndex: 10,
+    position: "relative",
   },
-  nextButtonText: { color: "#fff", fontWeight: "700", marginLeft: 8 },
+  nextButtonText: { 
+    color: "#fff", 
+    fontWeight: "700", 
+    marginLeft: scaleSize(8), 
+    fontSize: moderateScale(15) 
+  },
 });

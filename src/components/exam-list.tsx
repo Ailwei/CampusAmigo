@@ -29,7 +29,6 @@ const daysLeft = (date: string) => {
 export default function ExamList({ maxItems = 3 }: { maxItems?: number }) {
   const [items, setItems] = useState<ExamItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
 
   const loadExams = useCallback(async () => {
     setLoading(true);
@@ -95,30 +94,34 @@ export default function ExamList({ maxItems = 3 }: { maxItems?: number }) {
     return <Text style={styles.empty}>No exams scheduled.</Text>;
   }
 
-  return (
-    <View>
-      {items.map((item, index) => {
-        const left = daysLeft(item.date);
-        return (
-          <TouchableOpacity onPress={() => console.log("Exam card clicked:", item.code)}>
-            <View key={`${item.code}-${index}`} style={styles.card}>
-              <Text style={styles.subject}>
-                {item.subject?.name}
-                {item.subject?.code ? ` (${item.subject.code})` : ""}
-                {item.subject?.room ? ` • Room ${item.subject.room}` : ""}
-              </Text>
-              <Text style={styles.code}>{item.code}</Text>
-              <Text style={styles.meta}>
-                Date {item.date} • {left <= 0 ? "Today" : `${left} day${left === 1 ? "" : "s"} left`}
-              </Text>
-              {item.venue ? <Text style={styles.meta}>Venue {item.venue}</Text> : null}
+return (
+  <View>
+    {items.map((exam, index) => {
+      const left = daysLeft(exam.date);
+      return (
+        <TouchableOpacity
+          key={`${exam.code}-${index}`} // <-- key goes here
+          onPress={() => console.log("Exam card clicked:", exam.code)}
+          activeOpacity={0.7} // gives a nice fade effect when pressed
+        >
+          <View style={styles.card}>
+            <Text style={styles.subject}>
+              {exam.subject?.name}
+              {exam.subject?.code ? ` (${exam.subject.code})` : ""}
+              {exam.subject?.room ? ` • Room ${exam.subject.room}` : ""}
+            </Text>
+            <Text style={styles.code}>{exam.code}</Text>
+            <Text style={styles.meta}>
+              Date {exam.date} • {left <= 0 ? "Today" : `${left} day${left === 1 ? "" : "s"} left`}
+            </Text>
+            {exam.venue ? <Text style={styles.meta}>Venue {exam.venue}</Text> : null}
+          </View>
+        </TouchableOpacity>
+      );
+    })}
+  </View>
+);
 
-            </View>
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-  );
 }
 
 const styles = StyleSheet.create({

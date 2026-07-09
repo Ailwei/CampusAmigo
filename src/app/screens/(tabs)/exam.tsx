@@ -1,9 +1,10 @@
 import COLORS from "@/constants/color";
 import { useUser } from "@/context/userContext";
 import api from "@/utils/api";
+import { moderateScale, scaleSize, verticalScale } from "@/utils/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -17,6 +18,12 @@ import {
   TextInput,
   View,
 } from "react-native";
+
+import { router, useFocusEffect } from "expo-router";
+
+type RevisionTopic = { name: string; progress: number };
+type RevisionItem = { subject: string; topics: RevisionTopic[] };
+
 const daysLeft = (date: string) => {
   const today = new Date();
   const examDate = new Date(date);
@@ -32,6 +39,7 @@ const countdownColor = (days: number) => {
 
 export default function ExamsScreen() {
   const [exams, setExams] = useState<any[]>([]);
+  const [revisions, setRevisions] = useState<RevisionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
 
@@ -91,23 +99,81 @@ export default function ExamsScreen() {
     }
   }, [subjectOptions, newSubject]);
 
-  useEffect(() => {
-    const loadExams = async () => {
-      try {
-        const res = await api.get("/exam/get-exam");
-        if (res.data.success && Array.isArray(res.data.data.exams)) {
-          setExams(res.data.data.exams);
-        }
-        console.log("exams", res.data.data)
-
-      } catch (error: any) {
-        Alert.alert("Error", error?.response?.data?.message || "Failed to load exams");
-      } finally {
-        setLoading(false);
+  const loadExams = useCallback(async () => {
+    try {
+      const res = await api.get("/exam/get-exam");
+      if (res.data.success && Array.isArray(res.data.data.exams)) {
+        setExams(res.data.data.exams);
       }
-    };
-    loadExams();
+    } catch (error: any) {
+      Alert.alert("Error", error?.response?.data?.message || "Failed to load exams");
+    }
   }, []);
+
+  // Silent on failure: the exam list still works, progress bars just show 0%.
+  const loadRevisions = useCallback(async () => {
+    try {
+      const res = await api.get("/revision/get-revision");
+      if (res.data.success && Array.isArray(res.data.data.revisions)) {
+        setRevisions(res.data.data.revisions);
+      }
+    } catch (error) {
+      console.error("Failed to load revisions", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    const init = async () => {
+      await Promise.all([loadExams(), loadRevisions()]);
+      setLoading(false);
+    };
+    init();
+  }, [loadExams, loadRevisions]);
+
+  // Refetch every time this screen regains focus (e.g. coming back from the
+  // revision screen after updating topic progress), so cards don't show
+  // stale data until a full app reload.
+  const isFirstFocus = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (isFirstFocus.current) {
+        isFirstFocus.current = false;
+        return;
+      }
+      loadExams();
+      loadRevisions();
+    }, [loadExams, loadRevisions])
+  );
+
+  // Average topic progress per subject, computed from live revision data
+  // rather than a static `exam.progress` field so it stays in sync with
+  // whatever was last updated on the revision screen.
+  const subjectProgress = useMemo(() => {
+    const map = new Map<string, number>();
+    const bySubject = new Map<string, RevisionTopic[]>();
+
+    revisions.forEach((r) => {
+      const key = (r.subject || "").toLowerCase();
+      const existing = bySubject.get(key) || [];
+      bySubject.set(key, [...existing, ...(r.topics || [])]);
+    });
+
+    bySubject.forEach((topics, key) => {
+      if (topics.length === 0) {
+        map.set(key, 0);
+        return;
+      }
+      const avg = topics.reduce((sum, t) => sum + (t.progress || 0), 0) / topics.length;
+      map.set(key, Math.round(avg));
+    });
+
+    return map;
+  }, [revisions]);
+
+  const getProgress = (subjectName?: string) => {
+    if (!subjectName) return 0;
+    return subjectProgress.get(subjectName.toLowerCase()) ?? 0;
+  };
 
   const handleAdd = async () => {
     if (!newSubject.trim() || !newDate || !newVenue.trim()) {
@@ -184,45 +250,87 @@ export default function ExamsScreen() {
               ) : (
                 sortedExams.map((exam, index) => {
                   const left = daysLeft(exam.date);
+                  const progress = getProgress(exam.subject?.name);
+
                   return (
                     <Pressable
-                      onPress={() => console.log("Card clicked:", exam.code)}
+                      key={`${exam.code}-${exam.subject?.name}-${exam.date}-${index}`}
+                      onPress={() =>
+                        router.push({
+                          pathname: "/screens/addRevision",
+                          params: {
+                            subject: exam.subject?.name,
+                            examDate: exam.date,
+
+                          },
+                        })
+                      }
                       style={({ pressed }) => [
-                        pressed && { opacity: 0.7 }
+                        styles.card,
+                        pressed && { opacity: 0.7 },
                       ]}
                     >
-                      <View key={`${exam.code || exam.createdAt}-${index}`} style={styles.card}>
+                      <View style={styles.topRow}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.subject}>
+                            {exam.subject?.name}
+                            {exam.subject?.code ? ` (${exam.subject.code})` : ""}
+                          </Text>
 
-                        <View style={styles.topRow}>
-                          <View>
-                            <Text style={styles.subject}>
-                              {exam.subject?.name} {exam.subject?.code ? `(${exam.subject.code})` : ""}
-                              {exam.subject?.room ? ` • Room ${exam.subject.room}` : ""}
-                            </Text>
-                            {exam.code && <Text style={styles.code}>{exam.code}</Text>}
-                          </View>
-                          <View style={[styles.badge, { backgroundColor: countdownColor(left) }]}>
-                            <Text style={styles.badgeText}>{left} days</Text>
-                          </View>
+                          {!!exam.subject?.room && (
+                            <Text style={styles.code}>Room {exam.subject.room}</Text>
+                          )}
+
+                          {!!exam.code && (
+                            <Text style={styles.code}>{exam.code}</Text>
+                          )}
                         </View>
 
-                        <View style={styles.infoRow}>
-                          <Ionicons name="calendar-outline" size={16} color="#687588" />
-                          <Text style={styles.info}>{exam.date}</Text>
+                        <View
+                          style={[
+                            styles.badge,
+                            { backgroundColor: countdownColor(left) },
+                          ]}
+                        >
+                          <Text style={styles.badgeText}>
+                            {left === 0 ? "Today" : `${left} days`}
+                          </Text>
                         </View>
-
-                        <View style={styles.infoRow}>
-                          <Ionicons name="location-outline" size={16} color="#687588" />
-                          <Text style={styles.info}>{exam.venue}</Text>
-                        </View>
-
-                        <View style={styles.progressBackground}>
-                          <View style={[styles.progressFill, { width: `${exam.progress || 0}%` }]} />
-                        </View>
-                        <Text style={styles.progressText}>Revision {exam.progress || 0}%</Text>
                       </View>
-                    </Pressable>
 
+                      <View style={styles.infoRow}>
+                        <Ionicons
+                          name="calendar-outline"
+                          size={16}
+                          color="#687588"
+                        />
+                        <Text style={styles.info}>{exam.date}</Text>
+                      </View>
+
+                      <View style={styles.infoRow}>
+                        <Ionicons
+                          name="location-outline"
+                          size={16}
+                          color="#687588"
+                        />
+                        <Text style={styles.info}>
+                          {exam.venue || "No venue"}
+                        </Text>
+                      </View>
+
+                      <View style={styles.progressBackground}>
+                        <View
+                          style={[
+                            styles.progressFill,
+                            { width: `${progress}%` },
+                          ]}
+                        />
+                      </View>
+
+                      <Text style={styles.progressText}>
+                        Revision {progress}%
+                      </Text>
+                    </Pressable>
                   );
                 })
               )}
@@ -319,7 +427,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F6F8FC",
-    padding: 20,
+    padding: scaleSize(20),
   },
   centerContainer: {
     flex: 1,
@@ -328,119 +436,124 @@ const styles = StyleSheet.create({
     backgroundColor: "#F6F8FC",
   },
   loadingText: {
-    marginTop: 12,
-    fontSize: 16,
+    marginTop: verticalScale(12),
+    fontSize: moderateScale(16),
     color: COLORS.navySoft,
   },
   heading: {
-    fontSize: 26,
+    fontSize: moderateScale(26),
     fontWeight: "800",
     color: COLORS.navy,
-    marginBottom: 20,
-    textAlign: "center"
+    marginBottom: verticalScale(20),
+    textAlign: "center",
   },
   card: {
     backgroundColor: "#fff",
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 18,
+    borderRadius: scaleSize(18),
+    padding: scaleSize(18),
+    marginBottom: verticalScale(18),
     elevation: 3,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: verticalScale(2) },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowRadius: scaleSize(8),
   },
   topRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: verticalScale(10),
   },
-  subject: { fontSize: 18, fontWeight: "700", color: COLORS.navy },
-  code: { color: "#7A8599", marginTop: 2 },
-  badge: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 },
-  badgeText: { color: "#fff", fontWeight: "700" },
-  infoRow: { flexDirection: "row", alignItems: "center", marginTop: 5 },
-  info: { color: "#687588", marginLeft: 6 },
+  subject: { fontSize: moderateScale(18), fontWeight: "700", color: COLORS.navy },
+  code: { color: "#7A8599", marginTop: verticalScale(2), fontSize: moderateScale(14) },
+  badge: {
+    paddingHorizontal: scaleSize(14),
+    paddingVertical: verticalScale(8),
+    borderRadius: scaleSize(20),
+  },
+  badgeText: { color: "#fff", fontWeight: "700", fontSize: moderateScale(14) },
+  infoRow: { flexDirection: "row", alignItems: "center", marginTop: verticalScale(5) },
+  info: { color: "#687588", marginLeft: scaleSize(6), fontSize: moderateScale(14) },
   progressBackground: {
-    height: 10,
+    height: verticalScale(10),
     backgroundColor: "#E5E7EB",
-    borderRadius: 5,
+    borderRadius: scaleSize(5),
     overflow: "hidden",
-    marginTop: 18,
+    marginTop: verticalScale(18),
   },
-  progressFill: { height: 10, backgroundColor: COLORS.blue, borderRadius: 5 },
-  progressText: { marginTop: 8, fontWeight: "600", color: COLORS.navy },
+  progressFill: { height: verticalScale(10), backgroundColor: COLORS.blue, borderRadius: scaleSize(5) },
+  progressText: { marginTop: verticalScale(8), fontWeight: "600", color: COLORS.navy, fontSize: moderateScale(14) },
 
   emptyContainer: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 80,
+    paddingVertical: verticalScale(80),
   },
   empty: {
     color: COLORS.navySoft,
-    fontSize: 18,
+    fontSize: moderateScale(18),
     fontWeight: "600",
-    marginTop: 16,
+    marginTop: verticalScale(16),
   },
   emptySub: {
     color: "#94A3B8",
-    marginTop: 8,
+    marginTop: verticalScale(8),
+    fontSize: moderateScale(14),
   },
 
   form: {
     backgroundColor: "#fff",
-    padding: 20,
-    borderRadius: 16,
-    marginTop: 10,
+    padding: scaleSize(20),
+    borderRadius: scaleSize(16),
+    marginTop: verticalScale(10),
   },
-  inputContainer: { marginBottom: 16 },
-  label: { fontSize: 14, fontWeight: "600", color: COLORS.navy, marginBottom: 6 },
+  inputContainer: { marginBottom: verticalScale(16) },
+  label: { fontSize: moderateScale(14), fontWeight: "600", color: COLORS.navy, marginBottom: verticalScale(6) },
   input: {
     borderWidth: 1,
     borderColor: "#ccc",
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 14,
+    borderRadius: scaleSize(10),
+    padding: scaleSize(14),
+    marginBottom: verticalScale(14),
     backgroundColor: "#fff",
   },
   readOnlyField: { backgroundColor: "#F3F4F6" },
   pickerTrigger: {
     borderWidth: 1,
     borderColor: "#ccc",
-    borderRadius: 10,
-    padding: 14,
+    borderRadius: scaleSize(10),
+    padding: scaleSize(14),
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     backgroundColor: "#fff",
   },
-  pickerText: { color: COLORS.navy, fontSize: 16 },
+  pickerText: { color: COLORS.navy, fontSize: moderateScale(16) },
   pickerBox: {
     borderWidth: 1,
     borderColor: "#ccc",
-    borderRadius: 10,
-    marginTop: 6,
+    borderRadius: scaleSize(10),
+    marginTop: verticalScale(6),
     backgroundColor: "#fff",
   },
-  optionRow: { padding: 14, borderBottomWidth: 1, borderBottomColor: "#F1F5F9" },
+  optionRow: { padding: scaleSize(14), borderBottomWidth: 1, borderBottomColor: "#F1F5F9" },
   optionRowActive: { backgroundColor: "#E8F1FF" },
-  optionText: { color: COLORS.navy, fontSize: 16 },
+  optionText: { color: COLORS.navy, fontSize: moderateScale(16) },
 
   button: {
     backgroundColor: COLORS.blue,
-    borderRadius: 14,
-    padding: 16,
+    borderRadius: scaleSize(14),
+    padding: scaleSize(16),
     alignItems: "center",
-    marginTop: 10,
+    marginTop: verticalScale(10),
   },
-  buttonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  buttonText: { color: "#fff", fontWeight: "700", fontSize: moderateScale(16) },
 
   bottomButtonContainer: {
     position: "absolute",
-    bottom: 20,
-    left: 20,
-    right: 20,
+    bottom: verticalScale(20),
+    left: scaleSize(20),
+    right: scaleSize(20),
   },
 });

@@ -16,6 +16,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { scaleSize, moderateScale, verticalScale } from "@/utils/responsive";
 
 export const DAYS = ["Mon", "Tues", "Wed", "Thurs", "Fri", "Sat", "Sun"];
 
@@ -222,17 +223,33 @@ export default function Timetable() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: COLORS.bgTop },
-  container: { flex: 1, paddingHorizontal: 24, paddingTop: 24, backgroundColor: COLORS.bgTop },
-  title: { fontSize: 24, fontWeight: "800", color: COLORS.navy },
-  subtitle: { marginTop: 10, marginBottom: 20, color: COLORS.navySoft },
+  container: {
+    flex: 1,
+    paddingHorizontal: scaleSize(24),
+    paddingTop: verticalScale(24),
+    backgroundColor: COLORS.bgTop,
+  },
+  title: { fontSize: moderateScale(24), fontWeight: "800", color: COLORS.navy },
+  subtitle: {
+    marginTop: verticalScale(10),
+    marginBottom: verticalScale(20),
+    fontSize: moderateScale(14),
+    color: COLORS.navySoft,
+  },
 
-  label: { fontWeight: "700", marginBottom: 6, marginTop: 12, color: COLORS.navy },
+  label: {
+    fontWeight: "700",
+    fontSize: moderateScale(14),
+    marginBottom: verticalScale(6),
+    marginTop: verticalScale(12),
+    color: COLORS.navy,
+  },
   pickerContainer: {
     borderWidth: 1,
     borderColor: COLORS.navySoft,
-    borderRadius: 10,
+    borderRadius: scaleSize(10),
     backgroundColor: "#fff",
-    marginBottom: 10,
+    marginBottom: verticalScale(10),
   },
 
   timeButton: {
@@ -240,61 +257,99 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 1,
     borderColor: COLORS.navySoft,
-    borderRadius: 10,
-    padding: 12,
+    borderRadius: scaleSize(10),
+    padding: scaleSize(12),
     backgroundColor: "#fff",
-    marginBottom: 10,
+    marginBottom: verticalScale(10),
   },
-  timeButtonText: { fontSize: 16, fontWeight: "600", color: COLORS.navy, marginLeft: 8 },
+  timeButtonText: {
+    fontSize: moderateScale(16),
+    fontWeight: "600",
+    color: COLORS.navy,
+    marginLeft: scaleSize(8),
+  },
 
   addButton: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: COLORS.blue,
-    padding: 14,
-    borderRadius: 10,
+    padding: scaleSize(14),
+    borderRadius: scaleSize(10),
     justifyContent: "center",
-    marginTop: 10,
+    marginTop: verticalScale(10),
   },
-  addButtonText: { color: "#fff", fontWeight: "700", marginLeft: 8 },
+  addButtonText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: moderateScale(15),
+    marginLeft: scaleSize(8),
+  },
 
-  heading: { marginTop: 25, marginBottom: 10, fontSize: 18, fontWeight: "700", color: COLORS.navy },
+  heading: {
+    marginTop: verticalScale(25),
+    marginBottom: verticalScale(10),
+    fontSize: moderateScale(18),
+    fontWeight: "700",
+    color: COLORS.navy,
+  },
 
   card: {
     backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
+    borderRadius: scaleSize(12),
+    padding: scaleSize(14),
+    marginBottom: verticalScale(10),
     elevation: 2,
   },
-  cardHeader: { flexDirection: "row", alignItems: "center", marginBottom: 6 },
-  subject: { fontSize: 16, fontWeight: "700", color: COLORS.navy, marginLeft: 8 },
-  cardRow: { flexDirection: "row", alignItems: "center", marginTop: 4 },
-  details: { marginLeft: 6, color: COLORS.navySoft },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: verticalScale(6),
+  },
+  subject: {
+    fontSize: moderateScale(16),
+    fontWeight: "700",
+    color: COLORS.navy,
+    marginLeft: scaleSize(8),
+  },
+  cardRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: verticalScale(4),
+  },
+  details: {
+    marginLeft: scaleSize(6),
+    fontSize: moderateScale(14),
+    color: COLORS.navySoft,
+  },
 
   nextButton: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: COLORS.orange,
-    padding: 14,
-    borderRadius: 10,
+    padding: scaleSize(14),
+    borderRadius: scaleSize(10),
     justifyContent: "center",
-    marginTop: 20,
+    marginTop: verticalScale(20),
   },
   codeBox: {
     borderWidth: 1,
     borderColor: COLORS.navySoft,
-    borderRadius: 10,
+    borderRadius: scaleSize(10),
     backgroundColor: "#F9FAFB",
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    marginBottom: 10,
+    paddingVertical: verticalScale(12),
+    paddingHorizontal: scaleSize(14),
+    marginBottom: verticalScale(10),
   },
   codeText: {
-    fontSize: 16,
+    fontSize: moderateScale(16),
     fontWeight: "600",
     color: COLORS.navy,
   },
 
-  nextButtonText: { color: "#fff", fontWeight: "700", fontSize: 16, marginLeft: 8 },
+  nextButtonText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: moderateScale(16),
+    marginLeft: scaleSize(8),
+  },
 });

@@ -16,7 +16,7 @@ import COLORS from '@/constants/color';
 import { router } from "expo-router";
 import { configureGoogle } from '@/utils/authGoogle';
 import { bootstrapAuth } from "@/utils/token";
-
+import { scaleSize, verticalScale, moderateScale } from "../utils/responsive"
 configureGoogle();
 
 const { width } = Dimensions.get('window');
@@ -139,16 +139,43 @@ export default function WelcomeScreen() {
         ]} />
 
         <Animated.View style={[styles.core, { transform: [{ translateY: coreFloat }] }]}>
-          <LinearGradient colors={[COLORS.blueLight, COLORS.blue]} style={styles.coreGradient}>
-            <Ionicons name="school-outline" size={44} color="#fff" />
-          </LinearGradient>
-        </Animated.View>
+  <LinearGradient colors={[COLORS.blueLight, COLORS.blue]} style={styles.coreGradient}>
+    <Ionicons name="school-outline" size={moderateScale(44)} color="#fff" />
+  </LinearGradient>
+</Animated.View>
 
-        <OrbitNode icon={<Feather name="bell" size={50} color={COLORS.orange} />} style={{ top: 6, left: ORBIT_SIZE * 0.14 }} delay={0} />
-        <OrbitNode icon={<Ionicons name="book-outline" size={50} color={COLORS.blue} />} style={{ top: ORBIT_SIZE * 0.38, left: -6 }} delay={300} distance={6} />
-        <OrbitNode icon={<Feather name="check-square" size={50} color={COLORS.green} />} style={{ top: 10, right: ORBIT_SIZE * 0.06 }} delay={600} />
-        <OrbitNode icon={<Ionicons name="calendar-outline" size={50} color={COLORS.orange} />} style={{ bottom: ORBIT_SIZE * 0.14, right: -8 }} delay={900} />
-        <OrbitNode icon={<Feather name="target" size={50} color={COLORS.blue} />} style={{ bottom: 2, left: ORBIT_SIZE * 0.24 }} delay={1200} distance={6} />
+<OrbitNode
+  icon={<Feather name="bell" size={moderateScale(50)} color={COLORS.orange} />}
+  style={{ top: verticalScale(10), left: scaleSize(ORBIT_SIZE * 0.18) }}
+  delay={0}
+/>
+
+<OrbitNode
+  icon={<Ionicons name="book-outline" size={moderateScale(50)} color={COLORS.blue} />}
+  style={{ top: verticalScale(ORBIT_SIZE * 0.44), left: -scaleSize(12) }}
+  delay={300}
+  distance={verticalScale(6)}
+/>
+
+<OrbitNode
+  icon={<Feather name="check-square" size={moderateScale(50)} color={COLORS.green} />}
+  style={{ top: verticalScale(12), right: scaleSize(ORBIT_SIZE * 0.08) }}
+  delay={600}
+/>
+
+<OrbitNode
+  icon={<Ionicons name="calendar-outline" size={moderateScale(50)} color={COLORS.orange} />}
+  style={{ bottom: verticalScale(ORBIT_SIZE * 0.16), right: -scaleSize(10) }}
+  delay={900}
+/>
+
+<OrbitNode
+  icon={<Feather name="target" size={moderateScale(50)} color={COLORS.blue} />}
+  style={{ bottom: verticalScale(4), left: scaleSize(ORBIT_SIZE * 0.26) }}
+  delay={1200}
+  distance={verticalScale(6)}
+/>
+
       </View>
 
       <View style={styles.dots}>
@@ -161,22 +188,127 @@ export default function WelcomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, alignItems: 'center', paddingTop: 64, paddingHorizontal: 28, paddingBottom: 32 },
-  logoRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  logoImage: { width: 90, height: 90, resizeMode: 'contain'},
-  logoWord: { fontSize: 19, fontWeight: '700', color: COLORS.blue, letterSpacing: -0.3 },
-  logoWordBold: { color: COLORS.navy, fontWeight: '800' },
-  headline: { marginTop: 34, fontSize: 32, fontWeight: '800', color: COLORS.navy, textAlign: 'center', lineHeight: 38 },
-  headlineAccent: { color: COLORS.blue },
-  subtext: { marginTop: 14, fontSize: 15, fontWeight: '500', color: COLORS.navySoft, textAlign: 'center' },
-  cta: { marginTop: 26, paddingVertical: 15, paddingHorizontal: 46, borderRadius: 999, shadowColor: COLORS.orange, shadowOpacity: 0.4, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 6 },
-  ctaText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  stage: { flex: 1, width: '100%', marginTop: 30, alignItems: 'center', justifyContent: 'center' },
-  ring: { position: 'absolute', borderWidth: 5.5, borderColor: COLORS.ring, borderStyle: 'dashed' },
-  core: { width: 104, height: 104, borderRadius: 32, shadowColor: COLORS.blue, shadowOpacity: 0.45, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 8 },
-  coreGradient: { flex: 1, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
-  node: { position: 'absolute', width: 56, height: 56, borderRadius: 16, backgroundColor: COLORS.card, alignItems: 'center', justifyContent: 'center', shadowColor: COLORS.navy, shadowOpacity: 0.18, shadowRadius: 10, shadowOffset: { width: 0, height: 6 }, elevation: 5 },
-  dots: { flexDirection: 'row', gap: 6, marginTop: 20 },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(21,42,84,0.18)' },
-  dotActive: { width: 20, borderRadius: 4, backgroundColor: COLORS.blue },
+  screen: {
+    flex: 1,
+    alignItems: 'center',
+    paddingTop: verticalScale(64),
+    paddingHorizontal: scaleSize(28),
+    paddingBottom: verticalScale(32),
+  },
+  logoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scaleSize(8),
+  },
+  logoImage: {
+    width: scaleSize(100),
+    height: verticalScale(90),
+    resizeMode: 'contain',
+  },
+  logoWord: {
+    fontSize: moderateScale(19),
+    fontWeight: '700',
+    color: COLORS.blue,
+    letterSpacing: -0.3,
+  },
+  logoWordBold: {
+    color: COLORS.navy,
+    fontWeight: '800',
+  },
+  headline: {
+    marginTop: verticalScale(34),
+    fontSize: moderateScale(32),
+    fontWeight: '800',
+    color: COLORS.navy,
+    textAlign: 'center',
+    lineHeight: verticalScale(38),
+  },
+  headlineAccent: {
+    color: COLORS.blue,
+  },
+  subtext: {
+    marginTop: verticalScale(14),
+    fontSize: moderateScale(15),
+    fontWeight: '500',
+    color: COLORS.navySoft,
+    textAlign: 'center',
+  },
+  cta: {
+  marginTop: verticalScale(26),
+  paddingVertical: verticalScale(15),
+  paddingHorizontal: scaleSize(46),
+  borderRadius: 999,
+  shadowColor: COLORS.orange,
+  shadowOpacity: 0.4,
+  shadowRadius: moderateScale(14),
+  shadowOffset: { width: 0, height: verticalScale(8) },
+  elevation: 6,
+  zIndex: 10,
+},
+  ctaText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: moderateScale(16),
+  },
+  stage: {
+    flex: 1,
+    width: '100%',
+    marginTop: verticalScale(30),
+    alignItems: 'center',
+    justifyContent: 'center',
+    pointerEvents: "none",
+  },
+ ring: {
+  position: 'absolute',
+  borderWidth: scaleSize(5.5),
+  borderColor: COLORS.ring,
+  borderStyle: 'dashed',
+},
+  core: {
+    width: scaleSize(104),
+    height: verticalScale(104),
+    borderRadius: moderateScale(32),
+    shadowColor: COLORS.blue,
+    shadowOpacity: 0.45,
+    shadowRadius: moderateScale(18),
+    shadowOffset: { width: 0, height: verticalScale(10) },
+    elevation: 8,
+  },
+  coreGradient: {
+    flex: 1,
+    borderRadius: moderateScale(32),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  node: {
+    position: 'absolute',
+    width: scaleSize(56),
+    height: verticalScale(56),
+    borderRadius: moderateScale(16),
+    backgroundColor: COLORS.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: COLORS.navy,
+    shadowOpacity: 0.18,
+    shadowRadius: moderateScale(10),
+    shadowOffset: { width: 0, height: verticalScale(6) },
+    elevation: 5,
+   pointerEvents: "none",
+  },
+  dots: {
+    flexDirection: 'row',
+    gap: scaleSize(6),
+    marginTop: verticalScale(20),
+  },
+  dot: {
+    width: scaleSize(6),
+    height: verticalScale(6),
+    borderRadius: moderateScale(3),
+    backgroundColor: 'rgba(21,42,84,0.18)',
+  },
+  dotActive: {
+    width: scaleSize(20),
+    borderRadius: moderateScale(4),
+    backgroundColor: COLORS.blue,
+  },
 });

@@ -9,6 +9,7 @@ import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
+
 export default function Home() {
   const { width } = useWindowDimensions();
   const [classes, setClasses] = useState<ClassItem[]>([]);

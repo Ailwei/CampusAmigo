@@ -3,6 +3,8 @@ import { router, useLocalSearchParams } from "expo-router";
 import COLORS from "@/constants/color";
 import api from "@/utils/api";
 import { useState } from "react";
+import { moderateScale, scaleSize, verticalScale } from "@/utils/responsive";
+
 
 export default function ResetPassword() {
  const { email } = useLocalSearchParams<{ email?: string }>();
@@ -89,46 +91,48 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 24,
+    padding: scaleSize(24),
     backgroundColor: COLORS.bgTop,
   },
   title: {
-    fontSize: 22,
+    fontSize: moderateScale(22),
     fontWeight: "800",
-    marginBottom: 20,
+    marginBottom: verticalScale(20),
     color: COLORS.navy,
     textAlign: "center",
   },
   input: {
     width: "85%",
-    borderWidth: 1,
+    borderWidth: scaleSize(1),
     borderColor: COLORS.navySoft,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    borderRadius: moderateScale(10),
+    paddingHorizontal: scaleSize(14),
+    paddingVertical: verticalScale(12),
     backgroundColor: "#fff",
-    marginVertical: 8,
+    marginVertical: verticalScale(8),
     elevation: 1,
   },
   resetButton: {
     backgroundColor: COLORS.blue,
-    paddingVertical: 14,
-    paddingHorizontal: 40,
-    borderRadius: 12,
-    marginTop: 20,
+    paddingVertical: verticalScale(14),
+    paddingHorizontal: scaleSize(40),
+    borderRadius: moderateScale(12),
+    marginTop: verticalScale(20),
     width: "85%",
     alignItems: "center",
     elevation: 2,
+    zIndex: 10,            // ensures button is always clickable
+    position: "relative",  // helps stacking order
   },
   resetButtonText: {
     color: "#fff",
-    fontSize: 16,
+    fontSize: moderateScale(16),
     fontWeight: "700",
   },
   linkText: {
-    marginTop: 18,
+    marginTop: verticalScale(18),
     color: COLORS.orange,
-    fontSize: 15,
+    fontSize: moderateScale(15),
     fontWeight: "600",
   },
 });

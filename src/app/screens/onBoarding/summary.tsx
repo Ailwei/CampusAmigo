@@ -5,7 +5,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-
+import { verticalScale, moderateScale, scaleSize } from "@/utils/responsive";
 export default function Summary() {
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [timetable, setTimetable] = useState<ClassSlot[]>([]);
@@ -127,42 +127,88 @@ export default function Summary() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.bgTop },
-  content: { padding: 24, paddingBottom: 50 },
-  title: { fontSize: 28, fontWeight: "800", color: COLORS.navy, textAlign:"center" },
-  subtitle: { marginTop: 8, marginBottom: 24, fontSize: 15, color: COLORS.navySoft, textAlign: "center" },
-  section: { marginBottom: 24 },
-  sectionHeader: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
-  sectionTitle: { fontSize: 18, fontWeight: "700", color: COLORS.blue, marginLeft: 8 },
+  content: {
+    padding: scaleSize(24),
+    paddingBottom: verticalScale(50),
+  },
+  title: {
+    fontSize: moderateScale(28),
+    fontWeight: "800",
+    color: COLORS.navy,
+    textAlign: "center",
+  },
+  subtitle: {
+    marginTop: verticalScale(8),
+    marginBottom: verticalScale(24),
+    fontSize: moderateScale(15),
+    color: COLORS.navySoft,
+    textAlign: "center",
+  },
+  section: { marginBottom: verticalScale(24) },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: verticalScale(12),
+  },
+  sectionTitle: {
+    fontSize: moderateScale(18),
+    fontWeight: "700",
+    color: COLORS.blue,
+    marginLeft: scaleSize(8),
+  },
   subjectCard: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#fff",
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 10,
+    padding: scaleSize(12),
+    borderRadius: scaleSize(12),
+    marginBottom: verticalScale(10),
     elevation: 1,
   },
-  subjectText: { fontSize: 16, fontWeight: "600", color: COLORS.navy, marginLeft: 8 },
+  subjectText: {
+    fontSize: moderateScale(16),
+    fontWeight: "600",
+    color: COLORS.navy,
+    marginLeft: scaleSize(8),
+  },
   classCard: {
     backgroundColor: "#fff",
-    padding: 14,
-    borderRadius: 12,
-    marginBottom: 12,
+    padding: scaleSize(14),
+    borderRadius: scaleSize(12),
+    marginBottom: verticalScale(12),
     elevation: 1,
   },
-  classSubject: { fontSize: 16, fontWeight: "700", color: COLORS.navy, marginBottom: 6 },
+  classSubject: {
+    fontSize: moderateScale(16),
+    fontWeight: "700",
+    color: COLORS.navy,
+    marginBottom: verticalScale(6),
+  },
   classInfoRow: { flexDirection: "row", alignItems: "center" },
-  classInfo: { fontSize: 14, color: COLORS.navySoft, marginLeft: 6 },
-  placeholderCard: { backgroundColor: "#fff", padding: 14, borderRadius: 12 },
-  empty: { color: COLORS.navySoft, fontStyle: "italic" },
+  classInfo: {
+    fontSize: moderateScale(14),
+    color: COLORS.navySoft,
+    marginLeft: scaleSize(6),
+  },
+  placeholderCard: {
+    backgroundColor: "#fff",
+    padding: scaleSize(14),
+    borderRadius: scaleSize(12),
+  },
+  empty: { color: COLORS.navySoft, fontStyle: "italic", fontSize: moderateScale(14) },
   startButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: COLORS.blue,
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 20,
+    padding: scaleSize(16),
+    borderRadius: scaleSize(12),
+    marginTop: verticalScale(20),
   },
-  startButtonText: { color: "#fff", fontWeight: "700", fontSize: 16, marginLeft: 8 },
+  startButtonText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: moderateScale(16),
+    marginLeft: scaleSize(8),
+  },
 });

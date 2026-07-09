@@ -6,9 +6,9 @@ export default function Layout() {
   return (
     <UserProvider>
       <OnboardingProvider>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="login" options={{ headerShown: true, title: "Login" }} />
-          <Stack.Screen name="signup" options={{ headerShown: true, title: "Sign Up" }} />
+        <Stack screenOptions={{ headerShown: false}}>
+          <Stack.Screen name="login" options={{ headerShown: true, title: "" }} />
+          <Stack.Screen name="signup" options={{ headerShown: true, title: "" }} />
           <Stack.Screen name="details" options={{ headerShown: true, title: "Details" }} />
           <Stack.Screen name="onBoarding/add-classes" options={{ headerShown: true, title: "Add Classes" }} />
           <Stack.Screen name="onBoarding/timetable" options={{ headerShown: true, title: "Time Table" }} />

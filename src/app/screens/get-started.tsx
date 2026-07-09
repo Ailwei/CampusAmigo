@@ -5,7 +5,7 @@ import { router } from "expo-router";
 import { useState } from "react";
 import { Alert, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { useUser } from "../../context/userContext";
-
+import { scaleSize, moderateScale, verticalScale } from "@/utils/responsive";
 export default function GetStartedScreen() {
   const [loading, setLoading] = useState(false);
 const { loadUser } = useUser();
@@ -76,49 +76,50 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 24,
+    padding: scaleSize(24),
     backgroundColor: COLORS.bgTop,
   },
   logoContainer: {
-    marginBottom: 40,
+    marginBottom: verticalScale(40),
     alignItems: "center",
   },
   logo: {
-    width: 140,
-    height: 140,
+    width: scaleSize(140),
+    height: verticalScale(140),
     resizeMode: "contain",
   },
   title: {
-    fontSize: 22,
+    fontSize: moderateScale(22),
     fontWeight: "700",
-    marginBottom: 30,
+    marginBottom: verticalScale(30),
     color: COLORS.navy,
     textAlign: "center",
   },
   button: {
     backgroundColor: COLORS.blue,
-    paddingVertical: 14,
-    paddingHorizontal: 40,
-    borderRadius: 12,
-    marginVertical: 10,
-    width: "100%",
+    paddingVertical: verticalScale(14),
+    paddingHorizontal: scaleSize(40),
+    borderRadius: moderateScale(12),
+    marginVertical: verticalScale(10),
+    width: "85%",
     alignItems: "center",
     elevation: 2,
+    zIndex: 10,
   },
   googleButton: {
     backgroundColor: COLORS.orange,
   },
   buttonText: {
     color: "#fff",
-    fontSize: 16,
+    fontSize: moderateScale(16),
     fontWeight: "600",
   },
   link: {
-    marginTop: 20,
+    marginTop: verticalScale(20),
   },
   linkText: {
     color: COLORS.blue,
-    fontSize: 15,
+    fontSize: moderateScale(15),
     fontWeight: "500",
   },
 });

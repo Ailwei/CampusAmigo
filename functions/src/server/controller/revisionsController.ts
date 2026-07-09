@@ -11,35 +11,73 @@ const fail = (res: Response, message: string, status = 400) =>
 export const addRevisionController = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.userId;
-    const { subject, topic, date, progress } = req.body;
+    const { subject, topics, date } = req.body;
 
-    if (!userId) return fail(res, "Unauthorized", 401);
-    if (!subject || !topic || !date) {
-      return fail(res, "Subject, topic, and date are required", 400);
+    if (!userId) {
+      return fail(res, "Unauthorized", 401);
     }
 
-    const revision = {
-      subject,
-      topic,
-      date,
-      progress: progress ?? 0,
-      createdAt: Date.now(),
-    };
+    if (!subject || !Array.isArray(topics) || topics.length === 0 || !date) {
+      return fail(res, "Subject, topics and date are required");
+    }
 
     const userRef = db.collection("users").doc(userId);
-    const userSnap = await userRef.get();
-    if (!userSnap.exists) return fail(res, "User not found", 404);
+    const snap = await userRef.get();
 
-    const userData = userSnap.data();
-    const revisions = userData?.revisions || [];
+    if (!snap.exists) {
+      return fail(res, "User not found", 404);
+    }
 
-    const updatedRevisions = [...revisions, revision];
-    await userRef.update({ revisions: updatedRevisions, updatedAt: Date.now() });
+    const user = snap.data();
+    const revisions = user?.revisions || [];
 
-    return ok(res, "Revision added successfully", { revisions: updatedRevisions });
+    const index = revisions.findIndex(
+      (r: any) =>
+        r.subject.toLowerCase() === subject.toLowerCase()
+    );
+
+    if (index >= 0) {
+      const existingTopics = revisions[index].topics || [];
+
+      topics.forEach((topic: any) => {
+        const topicName =
+          typeof topic === "string" ? topic : topic.name;
+
+        const exists = existingTopics.some(
+          (t: any) => t.name === topicName
+        );
+
+        if (!exists) {
+          existingTopics.push({
+            name: topicName,
+            progress: 0,
+          });
+        }
+      });
+
+      revisions[index].topics = existingTopics;
+      revisions[index].date = date;
+    } else {
+      revisions.push({
+        subject,
+        date,
+        createdAt: Date.now(),
+        topics: topics.map((t: any) => ({
+          name: typeof t === "string" ? t : t.name,
+          progress: 0,
+        })),
+      });
+    }
+
+    await userRef.update({
+      revisions,
+      updatedAt: Date.now(),
+    });
+
+    return ok(res, "Revision saved", { revisions });
   } catch (error) {
-    console.error("ADD REVISION ERROR:", error);
-    return fail(res, (error as any)?.message || "Internal server error", 500);
+    console.error(error);
+    return fail(res, "Internal server error", 500);
   }
 };
 
@@ -66,57 +104,82 @@ export const getRevisionsController = async (req: AuthRequest, res: Response) =>
   }
 };
 
-export const updateRevisionProgressController = async (req: AuthRequest, res: Response) => {
+export const updateRevisionProgressController = async (
+  req: AuthRequest,
+  res: Response
+) => {
   try {
     const userId = req.user?.userId;
-    const { topic, progress } = req.body;
+    const { subject, topic, progress } = req.body;
 
     if (!userId) return fail(res, "Unauthorized", 401);
-    if (!topic || progress == null) {
-      return fail(res, "Topic and progress are required", 400);
-    }
 
     const userRef = db.collection("users").doc(userId);
-    const userSnap = await userRef.get();
-    if (!userSnap.exists) return fail(res, "User not found", 404);
+    const snap = await userRef.get();
 
-    const userData = userSnap.data();
-    const revisions = userData?.revisions || [];
+    if (!snap.exists) return fail(res, "User not found", 404);
 
-    const updatedRevisions = revisions.map((r: any) =>
-      r.topic === topic ? { ...r, progress } : r
-    );
+    const user = snap.data();
+    const revisions = user?.revisions || [];
 
-    await userRef.update({ revisions: updatedRevisions, updatedAt: Date.now() });
+    revisions.forEach((revision: any) => {
+      if (revision.subject !== subject) return;
 
-    return ok(res, "Revision progress updated", { revisions: updatedRevisions });
+      revision.topics = revision.topics.map((t: any) =>
+        t.name === topic
+          ? {
+              ...t,
+              progress,
+            }
+          : t
+      );
+    });
+
+    await userRef.update({
+      revisions,
+      updatedAt: Date.now(),
+    });
+
+    return ok(res, "Progress updated", { revisions });
   } catch (error) {
-    console.error("UPDATE REVISION ERROR:", error);
-    return fail(res, (error as any)?.message || "Internal server error", 500);
+    console.error(error);
+    return fail(res, "Internal server error", 500);
   }
 };
-export const deleteRevisionController = async (req: AuthRequest, res: Response) => {
+export const deleteRevisionController = async (
+  req: AuthRequest,
+  res: Response
+) => {
   try {
     const userId = req.user?.userId;
-    const { topic } = req.body; // or use an ID if you generate one
+    const { subject, topic } = req.body;
 
     if (!userId) return fail(res, "Unauthorized", 401);
-    if (!topic) return fail(res, "Revision topic is required", 400);
 
     const userRef = db.collection("users").doc(userId);
-    const userSnap = await userRef.get();
-    if (!userSnap.exists) return fail(res, "User not found", 404);
+    const snap = await userRef.get();
 
-    const userData = userSnap.data();
-    const revisions = userData?.revisions || [];
+    if (!snap.exists) return fail(res, "User not found", 404);
 
-    const updatedRevisions = revisions.filter((r: any) => r.topic !== topic);
+    const user = snap.data();
+    const revisions = user?.revisions || [];
 
-    await userRef.update({ revisions: updatedRevisions, updatedAt: Date.now() });
+    revisions.forEach((revision: any) => {
+      if (revision.subject !== subject) return;
 
-    return ok(res, "Revision deleted successfully", { revisions: updatedRevisions });
+      revision.topics = revision.topics.filter(
+        (t: any) => t.name !== topic
+      );
+    });
+
+    await userRef.update({
+      revisions,
+      updatedAt: Date.now(),
+    });
+
+    return ok(res, "Deleted", { revisions });
   } catch (error) {
-    console.error("DELETE REVISION ERROR:", error);
-    return fail(res, (error as any)?.message || "Internal server error", 500);
+    console.error(error);
+    return fail(res, "Internal server error", 500);
   }
 };
