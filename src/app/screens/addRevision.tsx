@@ -81,7 +81,6 @@ const dueBannerColors = (days: number) => {
 const getTopicName = (topic: RawTopic): string =>
   typeof topic === "string" ? topic : topic?.name ?? "";
 
-// Flattens each revision's nested `topics` array into individual task rows.
 const flattenToTasks = (items: RawRevisionItem[]): TopicTask[] => {
   const tasks: TopicTask[] = [];
 
@@ -133,7 +132,6 @@ export default function RevisionScreen() {
   const [revisions, setRevisions] = useState<RawRevisionItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Add Modal
   const [showAddModal, setShowAddModal] = useState(false);
   const [subject, setSubject] = useState("");
   const [topics, setTopics] = useState<{ name: string; progress: number }[]>([]);
@@ -244,7 +242,6 @@ export default function RevisionScreen() {
   ) => {
     const clamped = Math.min(100, Math.max(0, newProgress));
 
-    // Apply locally first so the UI feels instant.
     setTopicProgressLocal(revisionId, createdAt, topicIndex, clamped);
 
     try {
@@ -270,7 +267,6 @@ export default function RevisionScreen() {
     return groupTasks(flattenToTasks(result));
   }, [revisions, examSubject]);
 
-  // Overall progress for the exam banner, independent of the active filter/search.
   const examProgress = useMemo(() => {
     if (typeof examSubject !== "string") return null;
     const subjectRevisions = revisions.filter(
@@ -280,11 +276,14 @@ export default function RevisionScreen() {
     return { done: allTopics.filter((t) => t.progress >= 100).length, total: allTopics.length };
   }, [revisions, examSubject]);
 
+  console.log("asignment progress", examProgress)
+
+
   if (loading) {
     return (
       <SafeAreaView style={styles.centerContainer}>
         <ActivityIndicator size="large" color={COLORS.blue} />
-        <Text style={styles.loadingText}>Loading revisions...</Text>
+        <Text style={styles.loadingText}>Loading ...</Text>
       </SafeAreaView>
     );
   }
@@ -292,7 +291,6 @@ export default function RevisionScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
-        {/* Header */}
         <View style={styles.header}>
           <Pressable style={styles.backRow} onPress={() => router.back()} hitSlop={8}>
             <Ionicons name="arrow-back" size={22} color={COLORS.navy} />
@@ -353,8 +351,25 @@ export default function RevisionScreen() {
                     fontSize: moderateScale(13),
                     marginTop: 4
                   }}>
-                    {left <= daysToExam! ? "✅ On track for exam" : "⚠️ Revision after exam"}
-                  </Text>
+<View style={styles.statusRow}>
+  <Ionicons
+    name={left <= daysToExam! ? "checkmark-circle" : "warning"}
+    size={16}
+    color={left <= daysToExam! ? "#10B981" : "#EF4444"}
+  />
+  <Text
+    style={{
+      marginLeft: 6,
+      color: left <= daysToExam! ? "#10B981" : "#EF4444",
+      fontSize: moderateScale(13),
+      fontWeight: "600",
+    }}
+  >
+    {left <= daysToExam!
+      ? "On track for exam"
+      : "revisions after exam"}
+  </Text>
+</View>                  </Text>
                 )}
 
                 {group.topics.map((topic) => (
@@ -396,7 +411,6 @@ export default function RevisionScreen() {
           }}
         />
 
-        {/* FAB */}
         <Pressable style={styles.fab} onPress={() => setShowAddModal(true)}>
           <Ionicons name="add" size={30} color="#fff" />
         </Pressable>
@@ -540,6 +554,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
   },
+  statusRow: {
+  flexDirection: "row",
+  alignItems: "center",
+  marginTop: 6,
+},
 
   modalContainer: { flex: 1, backgroundColor: "#F6F8FC" },
   modalHeader: {

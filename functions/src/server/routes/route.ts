@@ -5,6 +5,7 @@ import { addAssignmentController,getAssignmentsController,updateAssignmentProgre
 import { addExamController, getExamsController } from "../controller/examasController";
 import { addRevisionController, getRevisionsController, updateRevisionProgressController } from "../controller/revisionsController";
 import { authMiddleware } from "../midlwWare/middleWare";
+import { addAssignmentTaskController, deleteAssignmentTaskController, getAssignmentTasksController, updateAssignmentTaskProgressController } from "../controller/addAssignmentController";
 
 const router = Router();
 
@@ -33,6 +34,12 @@ router.get("/exam/get-exam", authMiddleware, getExamsController);
 router.post("/revision/add-revision", authMiddleware, addRevisionController);
 router.get("/revision/get-revision", authMiddleware,getRevisionsController);
 router.patch("/revision/update-progress",authMiddleware, updateRevisionProgressController);
+
+
+router.get("/assignment/get-tasks", authMiddleware, getAssignmentTasksController);
+router.post("/assignment/add-task", authMiddleware, addAssignmentTaskController);
+router.patch("/assignment/update-task-progress", authMiddleware,  updateAssignmentTaskProgressController );
+router.delete("/assignment/delete-task", authMiddleware,  deleteAssignmentTaskController);
 
 
 

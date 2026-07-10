@@ -18,6 +18,7 @@ import {
   View,
 } from "react-native";
 import { scaleSize, moderateScale, verticalScale } from "@/utils/responsive";
+import { router } from "expo-router";
 
 const daysLeft = (date: string) => {
   const today = new Date();
@@ -50,6 +51,7 @@ export default function AssignmentsScreen() {
     if (!user) loadUser();
   }, [user, loadUser]);
 
+  
   useEffect(() => {
     const loadSubjectOptions = async () => {
       try {
@@ -62,8 +64,13 @@ export default function AssignmentsScreen() {
           .map((item: any) => item?.name || "")
           .filter(Boolean);
 
-        const previousSubjects = assignments.map((item: any) => item?.subject).filter(Boolean);
-
+        const previousSubjects = assignments
+          .map((item: any) =>
+            typeof item.subject === "string"
+              ? item.subject
+              : item.subject?.name || ""
+          )
+          .filter(Boolean);
         const merged = [...new Set([...profileClasses, ...summaryClasses, ...previousSubjects])];
         setSubjectOptions(merged);
       } catch (error) {
@@ -158,6 +165,7 @@ export default function AssignmentsScreen() {
 
   const sorted = [...assignments].sort((a, b) => daysLeft(a.due) - daysLeft(b.due));
 
+  
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#F6F8FC" }}>
       <KeyboardAvoidingView
@@ -181,14 +189,30 @@ export default function AssignmentsScreen() {
                   return (
                     <View key={item.createdAt} style={styles.card}>
                       <Pressable
-                        onPress={() => console.log("Card clicked:", item.code)}
+                        onPress={() =>
+                          router.push({
+                            pathname: "/screens/AddAsignmentTasks",
+                            params: {
+                              assignmentId: item._id || item.createdAt,
+                              title: item.title,
+                              subject:
+                                typeof item.subject === "string"
+                                  ? item.subject
+                                  : item.subject?.name || "",
+                              due: item.due,
+                              progress: String(item.progress || 0),
+                            },
+                          })
+                        }
                         style={({ pressed }) => [
-                          pressed && { opacity: 0.7 }
+                          pressed && { opacity: 0.7 },
                         ]}
-                      >                      
-                      <View style={styles.topRow}>
+                      >
+                        <View style={styles.topRow}>
                           <View>
-                            <Text style={styles.subject}>{item.subject.name}</Text>
+                            <Text style={styles.subject}>
+                              {typeof item.subject === "string" ? item.subject : item.subject?.name}
+                            </Text>
                             <Text style={styles.title}>{item.title}</Text>
                           </View>
                           <View style={[styles.badge, { backgroundColor: countdownColor(left) }]}>
@@ -207,7 +231,6 @@ export default function AssignmentsScreen() {
 
                         <Text style={styles.progressText}>Progress {item.progress || 0}%</Text>
                       </Pressable>
-
                     </View>
                   );
                 })

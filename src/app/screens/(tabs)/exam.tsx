@@ -110,7 +110,6 @@ export default function ExamsScreen() {
     }
   }, []);
 
-  // Silent on failure: the exam list still works, progress bars just show 0%.
   const loadRevisions = useCallback(async () => {
     try {
       const res = await api.get("/revision/get-revision");
@@ -130,9 +129,6 @@ export default function ExamsScreen() {
     init();
   }, [loadExams, loadRevisions]);
 
-  // Refetch every time this screen regains focus (e.g. coming back from the
-  // revision screen after updating topic progress), so cards don't show
-  // stale data until a full app reload.
   const isFirstFocus = useRef(true);
   useFocusEffect(
     useCallback(() => {
@@ -145,9 +141,6 @@ export default function ExamsScreen() {
     }, [loadExams, loadRevisions])
   );
 
-  // Average topic progress per subject, computed from live revision data
-  // rather than a static `exam.progress` field so it stays in sync with
-  // whatever was last updated on the revision screen.
   const subjectProgress = useMemo(() => {
     const map = new Map<string, number>();
     const bySubject = new Map<string, RevisionTopic[]>();
