@@ -19,6 +19,40 @@ export const addAssignmentController = async (req: AuthRequest, res: Response) =
       return fail(res, "Title, subject, and due date are required", 400);
     }
 
+    const userRef = db.collection("users").doc(userId);
+    const userSnap = await userRef.get();
+    if (!userSnap.exists) return fail(res, "User not found", 404);
+
+    const userData = userSnap.data();
+    const assignments = userData?.assignments || [];
+    
+    const normalize = (val: any) =>
+      typeof val === "string" ? val.trim().toLowerCase() : "";
+
+    const normalizedSubject = normalize(subject);
+
+    console.log("Incoming:", {
+  title,
+  subject,
+});
+
+  const isDuplicate = assignments.some((a: any) => {
+  const existingSubject =
+    typeof a.subject === "string"
+      ? a.subject
+      : a.subject?.name;
+
+  return normalize(existingSubject) === normalizedSubject;
+});
+
+    if (isDuplicate) {
+      return fail(
+        res,
+        `An assignment called "${subject}" already exists !`,
+        409
+      );
+    }
+
     const assignment = {
       title,
       subject,
@@ -26,13 +60,6 @@ export const addAssignmentController = async (req: AuthRequest, res: Response) =
       progress: progress ?? 0,
       createdAt: Date.now(),
     };
-
-    const userRef = db.collection("users").doc(userId);
-    const userSnap = await userRef.get();
-    if (!userSnap.exists) return fail(res, "User not found", 404);
-
-    const userData = userSnap.data();
-    const assignments = userData?.assignments || [];
 
     const updatedAssignments = [...assignments, assignment];
     await userRef.update({ assignments: updatedAssignments, updatedAt: Date.now() });

@@ -19,6 +19,38 @@ export const addExamController = async (req: AuthRequest, res: Response) => {
     if (!subject) {
       return fail(res, "Subject is required", 400);
     }
+    if (!date) {
+      return fail(res, "Date is required", 400);
+    }
+
+    const userRef = db.collection("users").doc(userId);
+    const userSnap = await userRef.get();
+    if (!userSnap.exists) return fail(res, "User not found", 404);
+
+    const userData = userSnap.data();
+    const exams = userData?.exams || [];
+
+    const normalize = (val: any) =>
+      typeof val === "string" ? val.trim().toLowerCase() : "";
+
+   const normalizedSubject = normalize(subject);
+
+const isDuplicate = exams.some((e: any) => {
+  const existingSubject =
+    typeof e.subject === "string"
+      ? e.subject
+      : e.subject?.name;
+
+  return normalize(existingSubject) === normalizedSubject;
+});
+
+    if (isDuplicate) {
+      return fail(
+        res,
+        `An exam for ${subject}  already exists !`,
+        409
+      );
+    }
 
     const exam = {
       subject,
@@ -28,13 +60,6 @@ export const addExamController = async (req: AuthRequest, res: Response) => {
       progress: progress ?? 0,
       createdAt: Date.now(),
     };
-
-    const userRef = db.collection("users").doc(userId);
-    const userSnap = await userRef.get();
-    if (!userSnap.exists) return fail(res, "User not found", 404);
-
-    const userData = userSnap.data();
-    const exams = userData?.exams || [];
 
     const updatedExams = [...exams, exam];
     await userRef.update({ exams: updatedExams, updatedAt: Date.now() });
