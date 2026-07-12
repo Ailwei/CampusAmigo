@@ -2,46 +2,49 @@ import COLORS, { getSubjectColor } from "@/constants/color";
 import { useOnboarding } from "@/context/onboardingContext";
 import api from "@/utils/api";
 import { useEffect, useState } from "react";
-import { Dimensions, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { scaleSize, moderateScale, verticalScale } from "@/utils/responsive";
 
-
 const HOURS = Array.from({ length: 12 }, (_, i) => `${8 + i}:00`);
 const DAYS = ["Mon", "Tues", "Wed", "Thurs", "Fri", "Sat", "Sun"];
-const screenWidth = Dimensions.get("window").width;
 
-const screenHeight = Dimensions.get("window").height;
+const toMinutes = (time: string) => {
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + m;
+};
 
-const HOUR_CELL_WIDTH = screenWidth * 0.45;
-const ROW_HEIGHT = screenHeight * 0.11;
-const DAY_LABEL_WIDTH = screenWidth * 0.15
-
-
-
+const today = new Date().toLocaleDateString("en-US", { weekday: "short" });
+const isToday = (day: string) => day.toLowerCase().slice(0, 3) === today.toLowerCase().slice(0, 3);
 
 export default function WeeklyCalendar() {
   const { timetable, setTimetable } = useOnboarding();
   const [loading, setLoading] = useState(true);
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+
+  const HOUR_CELL_WIDTH = screenWidth * 0.45;
+  const ROW_HEIGHT = screenHeight * 0.11;
+  const DAY_LABEL_WIDTH = screenWidth * 0.15;
+  const HEADER_HEIGHT = verticalScale(36);
 
   useEffect(() => {
-  const loadTimetable = async () => {
-    try {
-      const res = await api.get("/onboarding/view-time-table");
-      const fetchedTimetable = res?.data?.data?.timetable || [];
-      console.log("fetched", fetchedTimetable);
-      if (res.data.success) {
-        setTimetable(fetchedTimetable);
+    const loadTimetable = async () => {
+      try {
+        const res = await api.get("/onboarding/view-time-table");
+        const fetchedTimetable = res?.data?.data?.timetable || [];
+        console.log("fetched", fetchedTimetable);
+        if (res.data.success) {
+          setTimetable(fetchedTimetable);
+        }
+      } catch (error) {
+        console.log("Failed to load timetable", error);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.log("Failed to load timetable", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
-  loadTimetable();
-}, []);
+    loadTimetable();
+  }, []);
 
   if (loading) {
     return (
@@ -58,72 +61,107 @@ export default function WeeklyCalendar() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.screen}>
           <View style={styles.gridRow}>
-            <View style={styles.dayLabelColumn}>
-              {DAYS.map((day) => (
-                <View key={day} style={styles.dayLabelCell}>
-                  <Text style={styles.dayText}>{day}</Text>
-                </View>
-              ))}
+            <View style={[styles.dayLabelColumn, { width: DAY_LABEL_WIDTH }]}>
+              <View style={{ height: HEADER_HEIGHT }} />
+              {DAYS.map((day) => {
+                const todayRow = isToday(day);
+                return (
+                  <View
+                    key={day}
+                    style={[
+                      styles.dayLabelCell,
+                      { width: DAY_LABEL_WIDTH, height: ROW_HEIGHT },
+                      todayRow && styles.dayLabelCellToday,
+                    ]}
+                  >
+                    <Text style={[styles.dayText, todayRow && styles.dayTextToday]}>{day}</Text>
+                  </View>
+                );
+              })}
             </View>
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View>
-                {DAYS.map((day) => (
-                  <View key={day} style={styles.row}>
-                    {HOURS.map((hour) => {
-                      const slots = timetable.filter((slot) => {
-                        const slotDay = slot.day.toLowerCase().slice(0, 3);
-                        const dayMatch = slotDay === day.toLowerCase().slice(0, 3);
-                        const slotHour = slot.startTime.split(":")[0].replace(/^0/, "");
-                        const hourMatch = slotHour === hour.split(":")[0];
-                        return dayMatch && hourMatch;
-                      });
+                <View style={[styles.row, { height: HEADER_HEIGHT }]}>
+                  {HOURS.map((hour) => (
+                    <View key={hour} style={[styles.hourHeaderCell, { width: HOUR_CELL_WIDTH }]}>
+                      <Text style={styles.hourHeaderText}>{hour}</Text>
+                    </View>
+                  ))}
+                </View>
 
-                      return (
-                        <View key={hour} style={styles.cell}>
-                          {slots.length > 0 ? (
-                            slots.map((slot, idx) => {
-                              const color = getSubjectColor(slot.subject.name);
-                              return (
-                                <View
-                                  key={idx}
-                                  style={[
-                                    styles.classBlock,
-                                    {
-                                      borderLeftColor: color,
-                                      backgroundColor: `${color}15`,
-                                    },
-                                  ]}
-                                >
-                                  <View style={styles.subjectRow}>
-                                    <Text style={styles.subject} numberOfLines={1} ellipsizeMode="tail">
-                                      {slot.subject.name}
-                                    </Text>
-                                    <Text style={styles.code}>{slot.subject.code}</Text>
-                                  </View>
+                {DAYS.map((day) => {
+                  const todayRow = isToday(day);
+                  return (
+                    <View key={day} style={[styles.row, { height: ROW_HEIGHT }, todayRow && styles.rowToday]}>
+                      {HOURS.map((hour) => {
+                        const hourNum = Number(hour.split(":")[0]);
+                        const hourStartMin = hourNum * 60;
+                        const hourEndMin = hourStartMin + 60;
 
+                        const slots = timetable.filter((slot) => {
+                          const slotDay = slot.day.toLowerCase().slice(0, 3);
+                          const dayMatch = slotDay === day.toLowerCase().slice(0, 3);
+                          if (!dayMatch) return false;
 
-                                  <Text style={styles.metaLine}>
-                                    <Text style={{ color: COLORS.orange, fontWeight: "700" }}>
+                          const startMin = toMinutes(slot.startTime);
+                          const endMin = toMinutes(slot.endTime);
+                          return startMin < hourEndMin && endMin > hourStartMin;
+                        });
+
+                        return (
+                          <View key={hour} style={[styles.cell, { width: HOUR_CELL_WIDTH, height: ROW_HEIGHT }]}>
+                            {slots.length > 0 ? (
+                              slots.map((slot, idx) => {
+                                const color = getSubjectColor(slot.subject.name);
+                                const startMin = toMinutes(slot.startTime);
+                                const isStartHour = startMin >= hourStartMin && startMin < hourEndMin;
+
+                                if (!isStartHour) {
+                                  return (
+                                    <View
+                                      key={idx}
+                                      style={[styles.continuationBlock, { backgroundColor: `${color}15`, borderLeftColor: color }]}
+                                    />
+                                  );
+                                }
+
+                                return (
+                                  <View
+                                    key={idx}
+                                    style={[
+                                      styles.classBlock,
+                                      { borderLeftColor: color, backgroundColor: `${color}15` },
+                                    ]}
+                                  >
+                                    <View style={styles.subjectRow}>
+                                      <Text style={styles.subject} numberOfLines={1} ellipsizeMode="tail">
+                                        {slot.subject.name}
+                                      </Text>
+                                      <Text style={styles.code}>{slot.subject.code}</Text>
+                                    </View>
+
+                                    <Text style={[styles.metaLine, { color: COLORS.orange, fontWeight: "700" }]}>
                                       Room: {slot.subject.room || "Not Provided"}
                                     </Text>
-                                  </Text>
-                                  <View style={[styles.timePill, { backgroundColor: `${color}22` }]}>
-                                    <Text style={[styles.time, { color }]}>
-                                      {slot.startTime} - {slot.endTime}
-                                    </Text>
+
+                                    <View style={[styles.timePill, { backgroundColor: `${color}22` }]}>
+                                      <Text style={[styles.time, { color }]}>
+                                        {slot.startTime} - {slot.endTime}
+                                      </Text>
+                                    </View>
                                   </View>
-                                </View>
-                              );
-                            })
-                          ) : (
-                            <View style={styles.freeCell} />
-                          )}
-                        </View>
-                      );
-                    })}
-                  </View>
-                ))}
+                                );
+                              })
+                            ) : (
+                              <View style={styles.freeCell} />
+                            )}
+                          </View>
+                        );
+                      })}
+                    </View>
+                  );
+                })}
               </View>
             </ScrollView>
           </View>
@@ -143,20 +181,29 @@ const styles = StyleSheet.create({
 
   gridRow: { flexDirection: "row", marginHorizontal: scaleSize(12) },
 
-  dayLabelColumn: { width: DAY_LABEL_WIDTH },
+  dayLabelColumn: {},
   dayLabelCell: {
-    width: DAY_LABEL_WIDTH,
-    height: ROW_HEIGHT,
     justifyContent: "center",
     alignItems: "center",
   },
+  dayLabelCellToday: {
+    backgroundColor: `${COLORS.blue}15`,
+    borderRadius: scaleSize(10),
+  },
   dayText: { fontSize: moderateScale(13), fontWeight: "600", color: "#7B8BAA" },
+  dayTextToday: { color: COLORS.blue, fontWeight: "800" },
 
-  row: { flexDirection: "row", height: ROW_HEIGHT },
+  row: { flexDirection: "row" },
+  rowToday: { backgroundColor: `${COLORS.blue}08` },
+
+  hourHeaderCell: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: scaleSize(6),
+  },
+  hourHeaderText: { fontSize: moderateScale(12), fontWeight: "700", color: "#7B8BAA" },
 
   cell: {
-    width: HOUR_CELL_WIDTH,
-    height: ROW_HEIGHT,
     borderWidth: 1,
     borderColor: "#E7ECF4",
     backgroundColor: "#FCFDFF",
@@ -171,6 +218,11 @@ const styles = StyleSheet.create({
     borderLeftWidth: scaleSize(5),
     flexDirection: "column",
     gap: scaleSize(2),
+  },
+  continuationBlock: {
+    flex: 1,
+    borderRadius: scaleSize(8),
+    borderLeftWidth: scaleSize(5),
   },
   subject: {
     flex: 1,
@@ -192,7 +244,7 @@ const styles = StyleSheet.create({
   freeCell: {
     flex: 1,
     borderRadius: scaleSize(8),
-    backgroundColor: `${COLORS.red}15`,
+    backgroundColor: `${COLORS.ring2}`,
   },
 
   bottomBorder: {

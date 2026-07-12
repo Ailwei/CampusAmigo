@@ -425,6 +425,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: COLORS.navy,
     marginBottom: verticalScale(20),
+    textAlign: "center",
   },
   card: {
     backgroundColor: "#fff",

@@ -7,6 +7,7 @@ import { Picker } from "@react-native-picker/picker";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   Platform,
@@ -33,15 +34,25 @@ const toTimeString = (date: Date) => {
   return `${h}:${m}`;
 };
 
+// Compares "HH:MM" strings so we can catch end-before-start without
+// pulling in a date library.
+const isAfter = (a: string, b: string) => {
+  if (!a || !b) return true;
+  return a > b;
+};
+
 export default function Timetable() {
   const { classes, timetable, setTimetable } = useOnboarding();
 
+  const [loading, setLoading] = useState(true);
   const [subject, setSubject] = useState<ClassItem | null>(null);
   const [day, setDay] = useState<string>("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
+  const [justAddedKey, setJustAddedKey] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const handleNext = () => {
     const missingSubjects = classes.filter(
@@ -75,6 +86,8 @@ export default function Timetable() {
         }
       } catch (error: any) {
         Alert.alert("Error", error?.response?.data?.message || "Failed to load timetable");
+      } finally {
+        setLoading(false);
       }
     };
     loadTimetable();
@@ -92,11 +105,20 @@ export default function Timetable() {
     if (Platform.OS === "android") setShowEndPicker(false);
   };
 
+  const canAdd = !!subject && !!day && !!startTime && !!endTime;
+
   const addClassSlot = async () => {
-    if (!subject || !day || !startTime || !endTime) {
+    if (!canAdd) {
       Alert.alert("Please complete all fields.");
       return;
     }
+
+    if (!isAfter(endTime, startTime)) {
+      Alert.alert("Check your times", "End time must be after start time.");
+      return;
+    }
+
+    setSaving(true);
     try {
       const res = await api.post("/onboarding/add-time-table", {
         subject,
@@ -105,15 +127,17 @@ export default function Timetable() {
         endTime,
       });
       if (res.data.success) {
-        console.log(res.data);
-
         setTimetable(res.data.data.timetable);
+        const key = `${subject?.name}-${day}-${startTime}`;
+        setJustAddedKey(key);
+        setTimeout(() => setJustAddedKey(null), 1200);
         setStartTime("");
         setEndTime("");
-        Alert.alert("Success", "Class slot added");
       }
     } catch (error: any) {
       Alert.alert("Error", error?.response?.data?.message || "Failed to add class slot");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -129,91 +153,147 @@ export default function Timetable() {
             <Text style={styles.title}>Create Your Weekly Timetable</Text>
             <Text style={styles.subtitle}>Add each class to your weekly schedule.</Text>
 
-            <Text style={styles.label}>Subject</Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={subject}
-                onValueChange={(value) => setSubject(value)}
+            <View style={styles.formCard}>
+              <Text style={styles.label}>Subject</Text>
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={subject}
+                  onValueChange={(value) => setSubject(value)}
+                >
+                  <Picker.Item label="Select subject" value={null} color={COLORS.navySoft} />
+                  {classes.map((item) => (
+                    <Picker.Item key={item.name} label={item.name} value={item} />
+                  ))}
+                </Picker>
+              </View>
+
+              {subject?.code ? (
+                <View style={styles.codeBox}>
+                  <Text style={styles.codeText}>{subject.code}</Text>
+                </View>
+              ) : null}
+
+              <Text style={styles.label}>Day</Text>
+              <View style={styles.pickerContainer}>
+                <Picker selectedValue={day} onValueChange={(value) => setDay(value)}>
+                  <Picker.Item label="Select day" value="" color={COLORS.navySoft} />
+                  {DAYS.map((d) => (
+                    <Picker.Item key={d} label={d} value={d} />
+                  ))}
+                </Picker>
+              </View>
+
+              <View style={styles.timeRow}>
+                <View style={styles.timeCol}>
+                  <Text style={styles.label}>Start Time</Text>
+                  <Pressable style={styles.timeButton} onPress={() => setShowStartPicker(true)}>
+                    <Ionicons name="time-outline" size={18} color={COLORS.navySoft} />
+                    <Text style={styles.timeButtonText}>{startTime || "Select"}</Text>
+                  </Pressable>
+                </View>
+                <View style={styles.timeCol}>
+                  <Text style={styles.label}>End Time</Text>
+                  <Pressable style={styles.timeButton} onPress={() => setShowEndPicker(true)}>
+                    <Ionicons name="time-outline" size={18} color={COLORS.navySoft} />
+                    <Text style={styles.timeButtonText}>{endTime || "Select"}</Text>
+                  </Pressable>
+                </View>
+              </View>
+
+              {showStartPicker && (
+                <DateTimePicker
+                  value={toDate(startTime || "08:00")}
+                  mode="time"
+                  is24Hour={true}
+                  display={Platform.OS === "ios" ? "spinner" : "default"}
+                  onChange={handleStartChange}
+                />
+              )}
+              {showEndPicker && (
+                <DateTimePicker
+                  value={toDate(endTime || "09:00")}
+                  mode="time"
+                  is24Hour={true}
+                  display={Platform.OS === "ios" ? "spinner" : "default"}
+                  onChange={handleEndChange}
+                />
+              )}
+
+              <Pressable
+                style={({ pressed }) => [
+                  styles.addButton,
+                  pressed && styles.addButtonPressed,
+                  (!canAdd || saving) && styles.addButtonDisabled,
+                ]}
+                onPress={addClassSlot}
+                disabled={!canAdd || saving}
               >
-                <Picker.Item label="Select subject" value={null} color={COLORS.navySoft} />
-                {classes.map((item) => (
-                  <Picker.Item key={item.name} label={item.name} value={item} />
-                ))}
-              </Picker>
+                {saving ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="add-circle-outline" size={20} color="#fff" />
+                    <Text style={styles.addButtonText}>Add Class</Text>
+                  </>
+                )}
+              </Pressable>
             </View>
-            <Text style={styles.label}>Code</Text>
-            <View style={styles.codeBox}>
-              <Text style={styles.codeText}>{subject?.code || "N/A"}</Text>
-            </View>
-
-            <Text style={styles.label}>Day</Text>
-            <View style={styles.pickerContainer}>
-              <Picker selectedValue={day} onValueChange={(value) => setDay(value)}>
-                <Picker.Item label="Select day" value="" color={COLORS.navySoft} />
-                {DAYS.map((d) => (
-                  <Picker.Item key={d} label={d} value={d} />
-                ))}
-              </Picker>
-            </View>
-
-            <Text style={styles.label}>Start Time</Text>
-            <Pressable style={styles.timeButton} onPress={() => setShowStartPicker(true)}>
-              <Ionicons name="time-outline" size={18} color={COLORS.navySoft} />
-              <Text style={styles.timeButtonText}>{startTime || "Select start time"}</Text>
-            </Pressable>
-            {showStartPicker && (
-              <DateTimePicker
-                value={toDate(startTime || "08:00")}
-                mode="time"
-                is24Hour={true}
-                display={Platform.OS === "ios" ? "spinner" : "default"}
-                onChange={handleStartChange}
-              />
-            )}
-
-            <Text style={styles.label}>End Time</Text>
-            <Pressable style={styles.timeButton} onPress={() => setShowEndPicker(true)}>
-              <Ionicons name="time-outline" size={18} color={COLORS.navySoft} />
-              <Text style={styles.timeButtonText}>{endTime || "Select end time"}</Text>
-            </Pressable>
-            {showEndPicker && (
-              <DateTimePicker
-                value={toDate(endTime || "09:00")}
-                mode="time"
-                is24Hour={true}
-                display={Platform.OS === "ios" ? "spinner" : "default"}
-                onChange={handleEndChange}
-              />
-            )}
-
-            <Pressable style={styles.addButton} onPress={addClassSlot}>
-              <Ionicons name="add-circle-outline" size={22} color="#fff" />
-              <Text style={styles.addButtonText}>Add Class</Text>
-            </Pressable>
 
             <Text style={styles.heading}>Your Timetable</Text>
+
+            {loading && (
+              <View style={styles.centerFill}>
+                <ActivityIndicator size="small" color={COLORS.blue} />
+              </View>
+            )}
+
+            {!loading && timetable.length === 0 && (
+              <View style={styles.emptyState}>
+                <MaterialCommunityIcons
+                  name="calendar-blank-outline"
+                  size={32}
+                  color={COLORS.navySoft}
+                />
+                <Text style={styles.emptyStateText}>
+                  No classes scheduled yet — add one above
+                </Text>
+              </View>
+            )}
           </>
         }
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <MaterialCommunityIcons name="book-open-page-variant" size={20} color={COLORS.blue} />
-              <Text style={styles.subject}>{item.subject.name}({item.subject.code})</Text>
+        renderItem={({ item }) => {
+          const key = `${item.subject.name}-${item.day}-${item.startTime}`;
+          const isJustAdded = key === justAddedKey;
+          return (
+            <View style={[styles.card, isJustAdded && styles.cardHighlight]}>
+              <View style={styles.cardHeader}>
+                <MaterialCommunityIcons name="book-open-page-variant" size={20} color={COLORS.blue} />
+                <Text style={styles.subject}>
+                  {item.subject.name}
+                  {item.subject.code ? ` (${item.subject.code})` : ""}
+                </Text>
+              </View>
+              <View style={styles.cardRow}>
+                <Ionicons name="calendar-outline" size={16} color={COLORS.navySoft} />
+                <Text style={styles.details}>{item.day}</Text>
+              </View>
+              <View style={styles.cardRow}>
+                <Ionicons name="time-outline" size={16} color={COLORS.navySoft} />
+                <Text style={styles.details}>{item.startTime} - {item.endTime}</Text>
+              </View>
             </View>
-            <View style={styles.cardRow}>
-              <Ionicons name="calendar-outline" size={16} color={COLORS.navySoft} />
-              <Text style={styles.details}>{item.day}</Text>
-            </View>
-            <View style={styles.cardRow}>
-              <Ionicons name="time-outline" size={16} color={COLORS.navySoft} />
-              <Text style={styles.details}>{item.startTime} - {item.endTime}</Text>
-            </View>
-          </View>
-        )}
+          );
+        }}
         ListFooterComponent={
-          <Pressable style={styles.nextButton} onPress={handleNext}>
-            <Ionicons name="arrow-forward-circle" size={22} color="#fff" />
+          <Pressable
+            style={({ pressed }) => [
+              styles.nextButton,
+              pressed && styles.nextButtonPressed,
+            ]}
+            onPress={handleNext}
+          >
             <Text style={styles.nextButtonText}>Next</Text>
+            <Ionicons name="arrow-forward-circle" size={20} color="#fff" />
           </Pressable>
         }
       />
@@ -235,6 +315,16 @@ const styles = StyleSheet.create({
     marginBottom: verticalScale(20),
     fontSize: moderateScale(14),
     color: COLORS.navySoft,
+    textAlign: "center"
+  },
+
+  formCard: {
+    backgroundColor: "#fff",
+    borderRadius: moderateScale(14),
+    padding: scaleSize(16),
+    marginBottom: verticalScale(20),
+    borderWidth: 1,
+    borderColor: "#E7ECF4",
   },
 
   label: {
@@ -246,24 +336,31 @@ const styles = StyleSheet.create({
   },
   pickerContainer: {
     borderWidth: 1,
-    borderColor: COLORS.navySoft,
+    borderColor: "#E2E8F2",
     borderRadius: scaleSize(10),
-    backgroundColor: "#fff",
-    marginBottom: verticalScale(10),
+    backgroundColor: "#F8FAFD",
+    marginBottom: verticalScale(4),
   },
 
+  timeRow: {
+    flexDirection: "row",
+    gap: scaleSize(10),
+  },
+  timeCol: {
+    flex: 1,
+  },
   timeButton: {
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: COLORS.navySoft,
+    borderColor: "#E2E8F2",
     borderRadius: scaleSize(10),
     padding: scaleSize(12),
-    backgroundColor: "#fff",
+    backgroundColor: "#F8FAFD",
     marginBottom: verticalScale(10),
   },
   timeButtonText: {
-    fontSize: moderateScale(16),
+    fontSize: moderateScale(15),
     fontWeight: "600",
     color: COLORS.navy,
     marginLeft: scaleSize(8),
@@ -276,7 +373,14 @@ const styles = StyleSheet.create({
     padding: scaleSize(14),
     borderRadius: scaleSize(10),
     justifyContent: "center",
-    marginTop: verticalScale(10),
+    marginTop: verticalScale(6),
+    minHeight: verticalScale(48),
+  },
+  addButtonPressed: {
+    opacity: 0.85,
+  },
+  addButtonDisabled: {
+    opacity: 0.5,
   },
   addButtonText: {
     color: "#fff",
@@ -286,11 +390,29 @@ const styles = StyleSheet.create({
   },
 
   heading: {
-    marginTop: verticalScale(25),
+    marginTop: verticalScale(10),
     marginBottom: verticalScale(10),
     fontSize: moderateScale(18),
     fontWeight: "700",
     color: COLORS.navy,
+  },
+
+  centerFill: {
+    paddingVertical: verticalScale(24),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyState: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: verticalScale(28),
+    paddingHorizontal: scaleSize(20),
+  },
+  emptyStateText: {
+    marginTop: verticalScale(10),
+    color: COLORS.navySoft,
+    fontSize: moderateScale(14),
+    textAlign: "center",
   },
 
   card: {
@@ -298,7 +420,14 @@ const styles = StyleSheet.create({
     borderRadius: scaleSize(12),
     padding: scaleSize(14),
     marginBottom: verticalScale(10),
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: "#E7ECF4",
+  },
+ 
+  cardHighlight: {
+    borderColor: COLORS.blue,
+    borderWidth: 2,
+    backgroundColor: "#F0F8FF",
   },
   cardHeader: {
     flexDirection: "row",
@@ -331,17 +460,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: verticalScale(20),
   },
+  nextButtonPressed: {
+    opacity: 0.85,
+  },
   codeBox: {
     borderWidth: 1,
-    borderColor: COLORS.navySoft,
+    borderColor: "#E2E8F2",
     borderRadius: scaleSize(10),
-    backgroundColor: "#F9FAFB",
-    paddingVertical: verticalScale(12),
+    backgroundColor: "#F8FAFD",
+    paddingVertical: verticalScale(10),
     paddingHorizontal: scaleSize(14),
-    marginBottom: verticalScale(10),
+    marginBottom: verticalScale(4),
+    alignSelf: "flex-start",
   },
   codeText: {
-    fontSize: moderateScale(16),
+    fontSize: moderateScale(14),
     fontWeight: "600",
     color: COLORS.navy,
   },
@@ -350,6 +483,6 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "700",
     fontSize: moderateScale(16),
-    marginLeft: scaleSize(8),
+    marginRight: scaleSize(8),
   },
 });
