@@ -3,7 +3,7 @@ import { useUser } from "@/context/userContext";
 import api from "@/utils/api";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -18,7 +18,10 @@ import {
   View,
 } from "react-native";
 import { scaleSize, moderateScale, verticalScale } from "@/utils/responsive";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
+
+type AssignmentTopic = { name: string; progress: number };
+type TaskItem = { subject: string; topics: AssignmentTopic[] };
 
 const daysLeft = (date: string) => {
   const today = new Date();
@@ -36,6 +39,7 @@ export default function AssignmentsScreen() {
   const [assignments, setAssignments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
 
   const [newTitle, setNewTitle] = useState("");
   const [newSubject, setNewSubject] = useState("");
@@ -51,7 +55,7 @@ export default function AssignmentsScreen() {
     if (!user) loadUser();
   }, [user, loadUser]);
 
-  
+
   useEffect(() => {
     const loadSubjectOptions = async () => {
       try {
@@ -98,21 +102,78 @@ export default function AssignmentsScreen() {
       if (defaultSubject) setNewSubject(defaultSubject);
     }
   }, [showForm, subjectOptions, newSubject, user, assignments]);
-  useEffect(() => {
-    const loadAssignments = async () => {
-      try {
-        const res = await api.get("/assignment/get-assignment");
-        if (res.data.success && Array.isArray(res.data.data.assignments)) {
-          setAssignments(res.data.data.assignments);
-        }
-      } catch (error: any) {
-        Alert.alert("Error", error?.response?.data?.message || "Failed to load assignments");
-      } finally {
-        setLoading(false);
+
+  const loadAssignments = useCallback(async () => {
+    try {
+      const res = await api.get("/assignment/get-assignment");
+      if (res.data.success) {
+        setAssignments(res.data.data.assignments);
       }
-    };
-    loadAssignments();
+    } catch (error: any) {
+      Alert.alert("Error", error?.response?.data?.message || "Failed to load assignments");
+    }
   }, []);
+
+
+  const loadTasks = useCallback(async () => {
+    try {
+      const res = await api.get("/assignment/get-tasks");
+
+      if (res.data.success && Array.isArray(res.data.data.assignmentTasks)) {
+        setTasks(res.data.data.assignmentTasks);
+      }
+    } catch (error) {
+      console.error("Failed to load tasks", error);
+    }
+  }, []);
+
+
+  useEffect(() => {
+    const init = async () => {
+      await Promise.all([loadAssignments(), loadTasks()]);
+      setLoading(false);
+    };
+    init();
+  }, [loadAssignments, loadTasks]);
+
+  const isFirstFocus = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (isFirstFocus.current) {
+        isFirstFocus.current = false;
+        return;
+      }
+      loadAssignments();
+      loadTasks();
+    }, [loadAssignments, loadTasks])
+  );
+
+  const subjectProgress = useMemo(() => {
+    const map = new Map<string, number>();
+    const bySubject = new Map<string, AssignmentTopic[]>();
+
+    tasks.forEach((r) => {
+      const key = (r.subject || "").toLowerCase();
+      const existing = bySubject.get(key) || [];
+      bySubject.set(key, [...existing, ...(r.topics || [])]);
+    });
+
+    bySubject.forEach((topics, key) => {
+      if (topics.length === 0) {
+        map.set(key, 0);
+        return;
+      }
+      const avg = topics.reduce((sum, t) => sum + (t.progress || 0), 0) / topics.length;
+      map.set(key, Math.round(avg));
+    });
+
+    return map;
+  }, [tasks]);
+
+  const getProgress = (subjectName?: string) => {
+    if (!subjectName) return 0;
+    return subjectProgress.get(subjectName.toLowerCase()) ?? 0;
+  };
 
   const handleAdd = async () => {
     if (!newTitle.trim() || !newSubject || !newDue) {
@@ -150,8 +211,15 @@ export default function AssignmentsScreen() {
   };
 
   const onChangeDate = (event: any, selectedDate?: Date) => {
-    setShowDatePicker(false);
-    if (selectedDate) setNewDue(selectedDate);
+    if (Platform.OS === "android") {
+      setShowDatePicker(false);
+    }
+
+    if (event.type === "dismissed") return;
+
+    if (selectedDate) {
+      setNewDue(selectedDate);
+    }
   };
 
   if (loading) {
@@ -165,7 +233,7 @@ export default function AssignmentsScreen() {
 
   const sorted = [...assignments].sort((a, b) => daysLeft(a.due) - daysLeft(b.due));
 
-  
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#F6F8FC" }}>
       <KeyboardAvoidingView
@@ -184,23 +252,30 @@ export default function AssignmentsScreen() {
                   <Text style={styles.emptySub}>Add your first assignment below</Text>
                 </View>
               ) : (
-                sorted.map((item) => {
-                  const left = daysLeft(item.due);
+                sorted.map((assignment, index) => {
+                  const left = daysLeft(assignment.due);
+                  const subjectName =
+                    typeof assignment.subject === "string"
+                      ? assignment.subject
+                      : assignment.subject?.name;
+
+                  const progress = getProgress(subjectName);
+
                   return (
-                    <View key={item.createdAt} style={styles.card}>
+                    <View key={assignment.createdAt} style={styles.card}>
                       <Pressable
                         onPress={() =>
                           router.push({
                             pathname: "/screens/AddAsignmentTasks",
                             params: {
-                              assignmentId: item._id || item.createdAt,
-                              title: item.title,
+                              assignmentId: assignment._id || assignment.createdAt,
+                              title: assignment.title,
                               subject:
-                                typeof item.subject === "string"
-                                  ? item.subject
-                                  : item.subject?.name || "",
-                              due: item.due,
-                              progress: String(item.progress || 0),
+                                typeof assignment.subject === "string"
+                                  ? assignment.subject
+                                  : assignment.subject?.name || "",
+                              due: assignment.due,
+                              progress: String(assignment.progress || 0),
                             },
                           })
                         }
@@ -211,9 +286,9 @@ export default function AssignmentsScreen() {
                         <View style={styles.topRow}>
                           <View>
                             <Text style={styles.subject}>
-                              {typeof item.subject === "string" ? item.subject : item.subject?.name}
+                              {typeof assignment.subject === "string" ? assignment.subject : assignment.subject?.name}
                             </Text>
-                            <Text style={styles.title}>{item.title}</Text>
+                            <Text style={styles.title}>{assignment.title}</Text>
                           </View>
                           <View style={[styles.badge, { backgroundColor: countdownColor(left) }]}>
                             <Text style={styles.badgeText}>{left <= 0 ? "Due!" : `${left} days`}</Text>
@@ -222,14 +297,21 @@ export default function AssignmentsScreen() {
 
                         <View style={styles.infoRow}>
                           <Ionicons name="calendar-outline" size={16} color="#687588" />
-                          <Text style={styles.info}>{item.due}</Text>
+                          <Text style={styles.info}>{assignment.due}</Text>
                         </View>
 
                         <View style={styles.progressBackground}>
-                          <View style={[styles.progressFill, { width: `${item.progress || 0}%` }]} />
+                          <View
+                            style={[
+                              styles.progressFill,
+                              { width: `${progress}%` },
+                            ]}
+                          />
                         </View>
 
-                        <Text style={styles.progressText}>Progress {item.progress || 0}%</Text>
+                        <Text style={styles.progressText}>
+                          Revision {progress}%
+                        </Text>
                       </Pressable>
                     </View>
                   );
@@ -289,9 +371,11 @@ export default function AssignmentsScreen() {
 
               {showDatePicker && (
                 <DateTimePicker
-                  value={newDue || new Date()}
+                  value={newDue ?? new Date()}
                   mode="date"
-                  display="default"
+                  minimumDate={new Date()}
+
+                  display={Platform.OS === "ios" ? "spinner" : "default"}
                   onChange={onChangeDate}
                 />
               )}

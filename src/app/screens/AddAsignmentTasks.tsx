@@ -140,8 +140,13 @@ export default function AssignmentTaskScreen() {
     const [subject, setSubject] = useState("");
     const [topics, setTopics] = useState<{ name: string; progress: number }[]>([]);
     const [topicInput, setTopicInput] = useState("");
-    const [date, setDate] = useState<Date>(new Date());
     const [showDatePicker, setShowDatePicker] = useState(false);
+
+
+    const assignmentDueDate =
+        typeof due === "string" ? new Date(due) : new Date();
+
+    const [date, setDate] = useState<Date>(assignmentDueDate);
 
     const assignmentDateStr =
         typeof due === "string"
@@ -176,8 +181,11 @@ export default function AssignmentTaskScreen() {
     const resetForm = () => {
         setTopicInput("");
         setTopics([]);
-        setDate(new Date());
-        if (typeof assignmentSubject !== "string") setSubject("");
+        setDate(assignmentDueDate);
+
+        if (typeof assignmentSubject !== "string") {
+            setSubject("");
+        }
     };
 
     const addTopic = () => {
@@ -274,16 +282,14 @@ export default function AssignmentTaskScreen() {
         return groupTasks(flattenToTasks(result));
     }, [assignmetTasks, assignmentSubject]);
 
-  const assignmentProgress = useMemo(() => {
-    if (typeof assignmentSubject !== "string") return null;
-    const subjectAsignmentTask = assignmetTasks.filter(
-      (r) => r.subject.toLowerCase() === assignmentSubject.toLowerCase()
-    );
-    const allTopics = subjectAsignmentTask.flatMap((r) => r.topics);
-    console.log("tpics", allTopics)
-    return { done: allTopics.filter((t) => t.progress >= 100).length, total: allTopics.length };
-  }, [assignmetTasks, assignmentSubject]);
-console.log("asignment progress", assignmentProgress)
+    const assignmentProgress = useMemo(() => {
+        if (typeof assignmentSubject !== "string") return null;
+        const subjectAsignmentTask = assignmetTasks.filter(
+            (r) => r.subject.toLowerCase() === assignmentSubject.toLowerCase()
+        );
+        const allTopics = subjectAsignmentTask.flatMap((r) => r.topics);
+        return { done: allTopics.filter((t) => t.progress >= 100).length, total: allTopics.length };
+    }, [assignmetTasks, assignmentSubject]);
 
     if (loading) {
         return (
@@ -469,23 +475,26 @@ console.log("asignment progress", assignmentProgress)
                                 ))}
                             </View>
 
-                            <Text style={styles.label}>Revision Date</Text>
-                            <Pressable style={styles.dateButton} onPress={() => setShowDatePicker(true)}>
-                                <Ionicons name="calendar-outline" size={20} color={COLORS.blue} />
-                                <Text style={styles.dateButtonText}>{toDateString(date)}</Text>
-                            </Pressable>
+                            <Text style={styles.label}>Due Date</Text>
 
-                            {showDatePicker && (
-                                <DateTimePicker
-                                    value={date}
-                                    mode="date"
-                                    display="default"
-                                    onChange={(event, selectedDate) => {
-                                        setShowDatePicker(false);
-                                        if (selectedDate) setDate(selectedDate);
-                                    }}
+                            <View style={styles.dateButton}>
+                                <Ionicons
+                                    name="calendar-outline"
+                                    size={20}
+                                    color={COLORS.blue}
                                 />
-                            )}
+                                <Text style={styles.dateButtonText}>
+                                    {toDateString(date)}
+                                </Text>
+
+                                <Ionicons
+                                    name="lock-closed"
+                                    size={18}
+                                    color="#64748B"
+                                    style={{ marginLeft: "auto" }}
+                                />
+                            </View>
+
                         </ScrollView>
 
                         <Pressable style={styles.saveButton} onPress={handleAddTask}>

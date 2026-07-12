@@ -245,6 +245,8 @@ export default function ExamsScreen() {
                   const left = daysLeft(exam.date);
                   const progress = getProgress(exam.subject?.name);
 
+                  console.log("examsprogress", progress)
+
                   return (
                     <Pressable
                       key={`${exam.code}-${exam.subject?.name}-${exam.date}-${index}`}
@@ -381,11 +383,12 @@ export default function ExamsScreen() {
                 <DateTimePicker
                   value={newDate || new Date()}
                   mode="date"
+                  minimumDate={new Date()}
+
                   display="default"
                   onChange={onChangeDate}
                 />
               )}
-
               <TextInput
                 placeholder="Venue"
                 value={newVenue}

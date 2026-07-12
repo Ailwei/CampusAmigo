@@ -136,8 +136,14 @@ export default function RevisionScreen() {
   const [subject, setSubject] = useState("");
   const [topics, setTopics] = useState<{ name: string; progress: number }[]>([]);
   const [topicInput, setTopicInput] = useState("");
-  const [date, setDate] = useState<Date>(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+
+  const examDay =
+    typeof examDate === "string"
+      ? new Date(examDate)
+      : new Date();
+
+  const [date, setDate] = useState<Date>(examDay);
 
   const examDateStr = typeof examDate === "string" ? examDate : null;
   const daysToExam = examDateStr ? daysUntil(examDateStr) : null;
@@ -149,6 +155,12 @@ export default function RevisionScreen() {
   useEffect(() => {
     if (typeof examSubject === "string") setSubject(examSubject);
   }, [examSubject]);
+
+  useEffect(() => {
+    if (typeof examDate === "string") {
+      setDate(new Date(examDate));
+    }
+  }, [examDate]);
 
   useEffect(() => {
     const loadRevisions = async () => {
@@ -169,8 +181,15 @@ export default function RevisionScreen() {
   const resetForm = () => {
     setTopicInput("");
     setTopics([]);
-    setDate(new Date());
-    if (typeof examSubject !== "string") setSubject("");
+    setDate(
+      typeof examDate === "string"
+        ? new Date(examDate)
+        : new Date()
+    );;
+
+    if (typeof examSubject !== "string") {
+      setSubject("");
+    }
   };
 
   const addTopic = () => {
@@ -351,25 +370,25 @@ export default function RevisionScreen() {
                     fontSize: moderateScale(13),
                     marginTop: 4
                   }}>
-<View style={styles.statusRow}>
-  <Ionicons
-    name={left <= daysToExam! ? "checkmark-circle" : "warning"}
-    size={16}
-    color={left <= daysToExam! ? "#10B981" : "#EF4444"}
-  />
-  <Text
-    style={{
-      marginLeft: 6,
-      color: left <= daysToExam! ? "#10B981" : "#EF4444",
-      fontSize: moderateScale(13),
-      fontWeight: "600",
-    }}
-  >
-    {left <= daysToExam!
-      ? "On track for exam"
-      : "revisions after exam"}
-  </Text>
-</View>                  </Text>
+                    <View style={styles.statusRow}>
+                      <Ionicons
+                        name={left <= daysToExam! ? "checkmark-circle" : "warning"}
+                        size={16}
+                        color={left <= daysToExam! ? "#10B981" : "#EF4444"}
+                      />
+                      <Text
+                        style={{
+                          marginLeft: 6,
+                          color: left <= daysToExam! ? "#10B981" : "#EF4444",
+                          fontSize: moderateScale(13),
+                          fontWeight: "600",
+                        }}
+                      >
+                        {left <= daysToExam!
+                          ? "On track for exam"
+                          : "revisions after exam"}
+                      </Text>
+                    </View>                  </Text>
                 )}
 
                 {group.topics.map((topic) => (
@@ -462,11 +481,25 @@ export default function RevisionScreen() {
                 ))}
               </View>
 
-              <Text style={styles.label}>Revision Date</Text>
-              <Pressable style={styles.dateButton} onPress={() => setShowDatePicker(true)}>
-                <Ionicons name="calendar-outline" size={20} color={COLORS.blue} />
-                <Text style={styles.dateButtonText}>{toDateString(date)}</Text>
-              </Pressable>
+              <Text style={styles.label}>Exam Date</Text>
+
+              <View style={styles.dateButton}>
+                <Ionicons
+                  name="calendar-outline"
+                  size={20}
+                  color={COLORS.blue}
+                />
+                <Text style={styles.dateButtonText}>
+                  {toDateString(date)}
+                </Text>
+
+                <Ionicons
+                  name="lock-closed"
+                  size={18}
+                  color="#64748B"
+                  style={{ marginLeft: "auto" }}
+                />
+              </View>
 
               {showDatePicker && (
                 <DateTimePicker
@@ -555,10 +588,10 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   statusRow: {
-  flexDirection: "row",
-  alignItems: "center",
-  marginTop: 6,
-},
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 6,
+  },
 
   modalContainer: { flex: 1, backgroundColor: "#F6F8FC" },
   modalHeader: {
