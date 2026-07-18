@@ -6,7 +6,7 @@ import { getJwtSecret } from "../config/secrets";
 import { sendPasswordResetOtp } from "../services/otpservices";
 import { verifyToken } from "../services/googleAuthService";
 import { AuthRequest } from "../midlwWare/middleWare";
-
+import { capitalize } from "../utils/formatter";
 
 const ok = (res: Response, message: string, data?: any, status = 200) =>
   res.status(status).json({ success: true, message, data });
@@ -50,8 +50,8 @@ export const createUserController = async (req: Request, res: Response) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const docRef = await db.collection("users").add({
-      firstName,
-      lastName,
+      firstName: capitalize(firstName),
+      lastName: capitalize(lastName),
       email: normalizedEmail,
       password: hashedPassword,
       createdAt: Date.now(),
@@ -88,7 +88,7 @@ export const googleLoginController = async (req: Request, res: Response) => {
     if (!userSnap.exists) {
       await userRef.set({
         email: profile.email,
-        name: profile.name,
+        firstName: capitalize(profile.name),
         picture: profile.picture,
         provider: "google",
         createdAt: Date.now(),
@@ -102,8 +102,8 @@ export const googleLoginController = async (req: Request, res: Response) => {
       {
         userId: profile.sub,
         email: profile.email,
-        firstName: profile.given_name,
-        lastName: profile.family_name ?? "",
+        firstName: capitalize(profile.given_name),
+        lastName: capitalize(profile.family_name ?? ""),
       },
       process.env.JWT_SECRET!,
       { expiresIn: "7d" }
@@ -115,7 +115,9 @@ export const googleLoginController = async (req: Request, res: Response) => {
       user: {
         id: profile.sub,
         email: profile.email,
-        name: profile.name,
+        firstName: capitalize(profile.given_name || ""),
+        lastName: capitalize(profile.family_name || ""),
+        name: capitalize(profile.name),
         onboardingCompleted: userData?.onboardingCompleted ?? false,
         currencyDefault: userData?.currencyDefault ?? null,
       },
@@ -176,10 +178,12 @@ export const loginController = async (req: Request, res: Response) => {
       user: {
         id: userDoc.id,
         email: userData.email,
-        username: userData.username || null,
+        firstName: userData.firstName || "",
+        lastName: userData.lastName || "",
+        name: `${userData.firstName || ""} ${userData.lastName || ""}`.trim(),
         onboardingCompleted: userData.onboardingCompleted ?? false,
         currencyDefault: userData.currencyDefault ?? null,
-      },
+      }
     });
   } catch (error) {
     return fail(res, "Internal server error", 500);
@@ -318,39 +322,31 @@ export const updateProfileController = async (req: AuthRequest, res: Response) =
     return fail(res, "Internal server error", 500);
   }
 };
-export const deleteAccountController = async (req: AuthRequest, res: Response) => {
+export const deleteAccountController = async (
+  req: AuthRequest,
+  res: Response
+) => {
   try {
     const userId = req.user?.userId;
+
     if (!userId) {
       return fail(res, "Unauthorized", 401);
     }
 
     const userRef = db.collection("users").doc(userId);
-    const doc = await userRef.get();
-    if (!doc.exists) {
+    const userSnap = await userRef.get();
+
+    if (!userSnap.exists) {
       return fail(res, "User not found", 404);
     }
 
-    const debtsSnap = await db.collection("debts").where("userId", "==", userId).get();
-    const debtBatch = db.batch();
-    debtsSnap.forEach((d) => debtBatch.delete(d.ref));
-    await debtBatch.commit();
-
-    const paymentsSnap = await db.collection("payments").where("userId", "==", userId).get();
-    const paymentBatch = db.batch();
-    paymentsSnap.forEach((p) => paymentBatch.delete(p.ref));
-    await paymentBatch.commit();
-
-    const statsSnap = await db.collection("stats").where("userId", "==", userId).get();
-    const statsBatch = db.batch();
-    statsSnap.forEach((s) => statsBatch.delete(s.ref));
-    await statsBatch.commit();
-
     await userRef.delete();
 
-    return ok(res, "Account and related data deleted successfully", { id: userId });
-  } catch (e) {
-    console.error(e);
+    return ok(res, "Account deleted successfully", {
+      id: userId,
+    });
+  } catch (error) {
+    console.error("DELETE ACCOUNT ERROR:", error);
     return fail(res, "Internal server error", 500);
   }
 };

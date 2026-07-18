@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import { getUserProfile } from "@/utils/user";
+import { getToken } from "@/utils/token";
 
 type UserContextType = {
   user: any;
@@ -29,13 +30,24 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(profile);
       return profile;
     } catch (error) {
-      console.log("Failed to load user:", error);
       setUser(null);
       return null;
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const init = async () => {
+      const token = await getToken();
+
+      if (token) {
+        await loadUser();
+      }
+    };
+
+    init();
+  }, []);
 
   const clearUser = () => {
     setUser(null);

@@ -47,7 +47,7 @@ const GAP = scaleSize(12);
 
 export default function ExamList({ maxItems = 5 }: { maxItems?: number }) {
   const { width } = useWindowDimensions();
-  const cardWidth = width - SCREEN_PADDING * 2 - PEEK;
+  const cardWidth = width - SCREEN_PADDING * 2;
 
   const [items, setItems] = useState<ExamItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,7 +67,6 @@ export default function ExamList({ maxItems = 5 }: { maxItems?: number }) {
         setItems([]);
       }
     } catch (error) {
-      console.log("Failed to load exams", error);
       setItems([]);
     } finally {
       setLoading(false);
@@ -150,9 +149,7 @@ export default function ExamList({ maxItems = 5 }: { maxItems?: number }) {
           const dayUnit = left <= 0 ? "" : left === 1 ? "day" : "days";
 
           return (
-            <TouchableOpacity
-              onPress={() => console.log("Exam card clicked:", exam.code)}
-              activeOpacity={0.7}
+            <View
               style={[styles.card, { width: cardWidth }]}
             >
               <View style={[styles.accentBar, { backgroundColor: color }]} />
@@ -192,7 +189,7 @@ export default function ExamList({ maxItems = 5 }: { maxItems?: number }) {
                 <Text style={styles.daysNumber}>{dayLabel}</Text>
                 {dayUnit ? <Text style={styles.daysUnit}>{dayUnit}</Text> : null}
               </View>
-            </TouchableOpacity>
+            </View>
           );
         }}
       />

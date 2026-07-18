@@ -33,3 +33,48 @@ export const getSubjectColor = (subject: string): string => {
   const key: ColorKey = COLOR_KEYS[hash % COLOR_KEYS.length];
   return COLORS[key];
 };
+
+
+
+
+const PALETTE = [
+  { accent: "#4C6FFF", tint: "#EEF1FF" },
+  { accent: "#FF7A59", tint: "#FFF1EC" },
+  { accent: "#22B07D", tint: "#E9FBF3" },
+  { accent: "#B45CFF", tint: "#F6EEFF" },
+  { accent: "#FFB020", tint: "#FFF7E6" },
+  { accent: "#00B4D8", tint: "#E6FAFD" },
+  { accent: "#FF5C8A", tint: "#FFEDF3" },
+  { accent: "#6D5DF6", tint: "#EFEDFE" },
+];
+
+function hashString(str: string) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return Math.abs(hash);
+}
+
+export function getSubjectStyle(subject: string) {
+  const idx = hashString(subject || "default") % PALETTE.length;
+  return PALETTE[idx];
+}
+
+
+export function timeToMinutes(time: string): number {
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + (m || 0);
+}
+
+export function formatDuration(startTime: string, endTime: string): string {
+  const mins = timeToMinutes(endTime) - timeToMinutes(startTime);
+  if (mins <= 0) return "";
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h && m) return `${h}h ${m}m`;
+  if (h) return `${h}h`;
+  return `${m}m`;
+}
+
+

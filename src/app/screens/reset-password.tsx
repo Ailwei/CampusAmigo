@@ -33,7 +33,6 @@ export default function ResetPassword() {
       Alert.alert("Success", res.data.message || "Password reset successful");
       router.push("/screens/login");
     } catch (error: any) {
-      console.log(error);
       Alert.alert(
         "Reset failed",
         error?.response?.data?.message ||

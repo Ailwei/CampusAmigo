@@ -198,11 +198,11 @@ const styles = StyleSheet.create({
   logoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scaleSize(8),
+    gap: scaleSize(0),
   },
   logoImage: {
     width: scaleSize(100),
-    height: verticalScale(90),
+    height: verticalScale(100),
     resizeMode: 'contain',
   },
   logoWord: {

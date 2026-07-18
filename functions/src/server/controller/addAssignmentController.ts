@@ -21,14 +21,18 @@ export const addAssignmentTaskController = async (
 ) => {
   try {
     const userId = req.user?.userId;
-    const { subject, topics, date } = req.body;
+    const { assignmentId, topics } = req.body;
 
     if (!userId) {
       return fail(res, "Unauthorized", 401);
     }
 
-    if (!subject || !Array.isArray(topics) || topics.length === 0 || !date) {
-      return fail(res, "Subject, topics and date are required");
+    if (
+      !assignmentId ||
+      !Array.isArray(topics) ||
+      topics.length === 0
+    ) {
+      return fail(res, "Assignment id and topics are required");
     }
 
     const userRef = db.collection("users").doc(userId);
@@ -39,60 +43,48 @@ export const addAssignmentTaskController = async (
     }
 
     const user = snap.data();
-    const assignmentTasks = user?.assignmentTasks || [];
+    const assignments = user?.assignments || [];
 
-    const index = assignmentTasks.findIndex(
-      (task: any) =>
-        task.subject.toLowerCase() === subject.toLowerCase()
-    );
+    const updatedAssignments = assignments.map((assignment: any) => {
 
-    if (index >= 0) {
-      const existingTopics = assignmentTasks[index].topics || [];
+      if (assignment.id !== assignmentId) {
+        return assignment;
+      }
 
-      topics.forEach((topic: any) => {
-        const topicName =
-          typeof topic === "string" ? topic : topic.name;
+      const now = Date.now();
 
-        const exists = existingTopics.some(
-          (t: any) => t.name === topicName
-        );
+      const task = {
+        id: `task_${now}`,
+        topics,
+        progress: 0,
+        createdAt: now,
+      };
 
-        if (!exists) {
-          existingTopics.push({
-            name: topicName,
-            progress: 0,
-          });
-        }
-      });
+      return {
+        ...assignment,
+        tasks: [
+          ...(assignment.tasks || []),
+          task
+        ]
+      };
+    });
 
-      assignmentTasks[index].topics = existingTopics;
-      assignmentTasks[index].date = date;
-    } else {
-      assignmentTasks.push({
-        subject,
-        date,
-        createdAt: Date.now(),
-        topics: topics.map((t: any) => ({
-          name: typeof t === "string" ? t : t.name,
-          progress: 0,
-        })),
-      });
-    }
 
     await userRef.update({
-      assignmentTasks,
+      assignments: updatedAssignments,
       updatedAt: Date.now(),
     });
 
-    return ok(res, "Assignment task saved", {
-      assignmentTasks,
+
+    return ok(res, "Task added", {
+      assignments: updatedAssignments
     });
+
   } catch (error) {
     console.error(error);
     return fail(res, "Internal server error", 500);
   }
 };
-
 export const getAssignmentTasksController = async (
   req: AuthRequest,
   res: Response
@@ -113,8 +105,18 @@ export const getAssignmentTasksController = async (
 
     const user = snap.data();
 
-    const assignmentTasks = user?.assignmentTasks || [];
+    const assignments = user?.assignments || [];
 
+    const assignmentTasks = assignments.flatMap((assignment: any) =>
+      (assignment.tasks || []).map((task: any) => ({
+        ...task,
+        assignmentId: assignment.id,
+        assignmentTitle: assignment.title,
+        subject: assignment.subject,
+        date: assignment.due,
+
+      }))
+    );
     const sorted = assignmentTasks.sort(
       (a: any, b: any) =>
         new Date(a.date).getTime() - new Date(b.date).getTime()
@@ -135,10 +137,14 @@ export const updateAssignmentTaskProgressController = async (
 ) => {
   try {
     const userId = req.user?.userId;
-    const { subject, topic, progress } = req.body;
+    const { assignmentId, topic, progress } = req.body;
 
     if (!userId) {
       return fail(res, "Unauthorized", 401);
+    }
+
+    if (!assignmentId || !topic || progress === undefined) {
+      return fail(res, "assignmentId, topic and progress are required");
     }
 
     const userRef = db.collection("users").doc(userId);
@@ -149,35 +155,57 @@ export const updateAssignmentTaskProgressController = async (
     }
 
     const user = snap.data();
-    const assignmentTasks = user?.assignmentTasks || [];
+    const assignments = user?.assignments || [];
 
-    assignmentTasks.forEach((task: any) => {
-      if (task.subject !== subject) return;
+    let matched = false;
 
-      task.topics = task.topics.map((t: any) =>
-        t.name === topic
-          ? {
-              ...t,
-              progress,
-            }
-          : t
-      );
+    const updatedAssignments = assignments.map((assignment: any) => {
+      if (assignment.id !== assignmentId) {
+        return assignment;
+      }
+
+      const updatedTasks = (assignment.tasks || []).map((task: any) => {
+        const hasTopic = (task.topics || []).some((t: any) => t.name === topic);
+        if (!hasTopic) return task;
+
+        matched = true;
+
+        return {
+          ...task,
+          topics: task.topics.map((t: any) =>
+            t.name === topic ? { ...t, progress } : t
+          ),
+        };
+      });
+
+      return { ...assignment, tasks: updatedTasks };
     });
 
+    if (!matched) {
+      return fail(res, "Task or topic not found", 404);
+    }
+
     await userRef.update({
-      assignmentTasks,
+      assignments: updatedAssignments,
       updatedAt: Date.now(),
     });
 
-    return ok(res, "Progress updated", {
-      assignmentTasks,
-    });
+    const assignmentTasks = updatedAssignments.flatMap((assignment: any) =>
+      (assignment.tasks || []).map((task: any) => ({
+        ...task,
+        assignmentId: assignment.id,
+        assignmentTitle: assignment.title,
+        subject: assignment.subject,
+        date: assignment.due,
+      }))
+    );
+
+    return ok(res, "Progress updated", { assignmentTasks });
   } catch (error) {
     console.error(error);
     return fail(res, "Internal server error", 500);
   }
 };
-
 export const deleteAssignmentTaskController = async (
   req: AuthRequest,
   res: Response

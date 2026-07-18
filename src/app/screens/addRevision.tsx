@@ -33,6 +33,7 @@ type Topic = {
 type RawRevisionItem = {
   _id?: string;
   createdAt: number;
+  subjectId: string,
   date: string;
   subject: string;
   topics: Topic[];
@@ -43,6 +44,7 @@ type TopicTask = {
   revisionId: string | undefined;
   createdAt: number;
   subject: string;
+  subjectId: string,
   date: string;
   topicIndex: number;
   topicName: string;
@@ -52,6 +54,7 @@ type TopicTask = {
 type RevisionGroup = {
   key: string;
   revisionId: string | undefined;
+  subjectId: string,
   createdAt: number;
   subject: string;
   date: string;
@@ -91,6 +94,7 @@ const flattenToTasks = (items: RawRevisionItem[]): TopicTask[] => {
         key: `${groupKey}-${index}`,
         revisionId: revision._id,
         createdAt: revision.createdAt,
+        subjectId: revision.subjectId,
         subject: revision.subject,
         date: revision.date,
         topicIndex: index,
@@ -115,6 +119,7 @@ const groupTasks = (tasks: TopicTask[]): RevisionGroup[] => {
         key: groupKey,
         revisionId: task.revisionId,
         createdAt: task.createdAt,
+        subjectId: task.subjectId,
         subject: task.subject,
         date: task.date,
         topics: [task],
@@ -126,8 +131,11 @@ const groupTasks = (tasks: TopicTask[]): RevisionGroup[] => {
 
 export default function RevisionScreen() {
   const { user, loadUser } = useUser();
-  const { subject: examSubject, examDate } = useLocalSearchParams();
+  const { examDate, subjectId, subject: examSubject } = useLocalSearchParams();
   const router = useRouter();
+
+
+  const examSubjectStr = typeof examSubject === "string" ? examSubject : "";
 
   const [revisions, setRevisions] = useState<RawRevisionItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -153,8 +161,10 @@ export default function RevisionScreen() {
   }, [user, loadUser]);
 
   useEffect(() => {
-    if (typeof examSubject === "string") setSubject(examSubject);
-  }, [examSubject]);
+    if (examSubjectStr) {
+      setSubject(examSubjectStr);
+    }
+  }, [examSubjectStr]);
 
   useEffect(() => {
     if (typeof examDate === "string") {
@@ -185,11 +195,9 @@ export default function RevisionScreen() {
       typeof examDate === "string"
         ? new Date(examDate)
         : new Date()
-    );;
+    );
 
-    if (typeof examSubject !== "string") {
-      setSubject("");
-    }
+    setSubject("");
   };
 
   const addTopic = () => {
@@ -211,7 +219,7 @@ export default function RevisionScreen() {
 
     try {
       const res = await api.post("/revision/add-revision", {
-        subject,
+        subjectId,
         topics,
         date: toDateString(date),
       });
@@ -265,7 +273,7 @@ export default function RevisionScreen() {
 
     try {
       const res = await api.patch("/revision/update-progress", {
-        subject,
+        subjectId,
         topic: topicName,
         progress: clamped,
       });
@@ -279,23 +287,22 @@ export default function RevisionScreen() {
   };
 
   const filteredRevisions = useMemo(() => {
-    const result = typeof examSubject === "string"
-      ? revisions.filter((r) => r.subject.toLowerCase() === examSubject.toLowerCase())
-      : revisions;
+    const result =
+      typeof subjectId === "string"
+        ? revisions.filter((r) => r.subjectId === subjectId)
+        : revisions;
 
     return groupTasks(flattenToTasks(result));
-  }, [revisions, examSubject]);
+  }, [revisions, subjectId]);
 
   const examProgress = useMemo(() => {
-    if (typeof examSubject !== "string") return null;
+    if (typeof subjectId !== "string") return null;
     const subjectRevisions = revisions.filter(
-      (r) => r.subject.toLowerCase() === examSubject.toLowerCase()
+      (r) => r.subjectId === subjectId
     );
     const allTopics = subjectRevisions.flatMap((r) => r.topics);
     return { done: allTopics.filter((t) => t.progress >= 100).length, total: allTopics.length };
-  }, [revisions, examSubject]);
-
-  console.log("asignment progress", examProgress)
+  }, [revisions, subjectId]);
 
 
   if (loading) {
@@ -314,8 +321,10 @@ export default function RevisionScreen() {
           <Pressable style={styles.backRow} onPress={() => router.back()} hitSlop={8}>
             <Ionicons name="arrow-back" size={22} color={COLORS.navy} />
             <View style={{ marginLeft: 10 }}>
-              <Text style={styles.breadcrumb}>{typeof examSubject === "string" ? "Exams" : "Home"}</Text>
-              <Text style={styles.title}>{typeof examSubject === "string" ? examSubject : "Revisions"}</Text>
+              <Text style={styles.breadcrumb}>{typeof subjectId === "string" ? "Exams Tasks" : "Home"}</Text>
+              <Text style={styles.title}>
+                {typeof subjectId === "string" ? (examSubjectStr || subjectId) : "Revisions"}
+              </Text>
             </View>
           </Pressable>
 
@@ -365,30 +374,25 @@ export default function RevisionScreen() {
                 </Text>
 
                 {examDateStr && (
-                  <Text style={{
-                    color: left <= daysToExam! ? "#10B981" : "#EF4444",
-                    fontSize: moderateScale(13),
-                    marginTop: 4
-                  }}>
-                    <View style={styles.statusRow}>
-                      <Ionicons
-                        name={left <= daysToExam! ? "checkmark-circle" : "warning"}
-                        size={16}
-                        color={left <= daysToExam! ? "#10B981" : "#EF4444"}
-                      />
-                      <Text
-                        style={{
-                          marginLeft: 6,
-                          color: left <= daysToExam! ? "#10B981" : "#EF4444",
-                          fontSize: moderateScale(13),
-                          fontWeight: "600",
-                        }}
-                      >
-                        {left <= daysToExam!
-                          ? "On track for exam"
-                          : "revisions after exam"}
-                      </Text>
-                    </View>                  </Text>
+                  <View style={styles.statusRow}>
+                    <Ionicons
+                      name={left <= daysToExam! ? "checkmark-circle" : "warning"}
+                      size={16}
+                      color={left <= daysToExam! ? "#10B981" : "#EF4444"}
+                    />
+                    <Text
+                      style={{
+                        marginLeft: 6,
+                        color: left <= daysToExam! ? "#10B981" : "#EF4444",
+                        fontSize: moderateScale(13),
+                        fontWeight: "600",
+                      }}
+                    >
+                      {left <= daysToExam!
+                        ? "On track for exam"
+                        : "revisions after exam"}
+                    </Text>
+                  </View>
                 )}
 
                 {group.topics.map((topic) => (
@@ -445,8 +449,8 @@ export default function RevisionScreen() {
 
             <ScrollView style={styles.modalContent} keyboardShouldPersistTaps="handled">
               <Text style={styles.label}>Subject</Text>
-              {typeof examSubject === "string" ? (
-                <Text style={styles.fixedSubject}>{examSubject}</Text>
+              {typeof subjectId === "string" ? (
+                <Text style={styles.fixedSubject}>{examSubjectStr || subjectId}</Text>
               ) : (
                 <TextInput
                   style={styles.input}

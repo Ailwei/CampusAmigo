@@ -43,7 +43,7 @@ const GAP = scaleSize(12);
 
 export default function DeadlineList({ maxItems = 5 }: { maxItems?: number }) {
   const { width } = useWindowDimensions();
-  const cardWidth = width - SCREEN_PADDING * 2 - PEEK;
+  const cardWidth = width - SCREEN_PADDING * 2;
 
   const [items, setItems] = useState<AssignmentItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,7 +63,6 @@ export default function DeadlineList({ maxItems = 5 }: { maxItems?: number }) {
         setItems([]);
       }
     } catch (error) {
-      console.log("Failed to load deadlines", error);
       setItems([]);
     } finally {
       setLoading(false);
@@ -189,16 +188,16 @@ export default function DeadlineList({ maxItems = 5 }: { maxItems?: number }) {
 const styles = StyleSheet.create({
   loadingRow: { paddingVertical: verticalScale(8) },
   empty: { color: COLORS.navySoft, fontStyle: "italic", textAlign: "center" },
-  card: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    borderRadius: scaleSize(14),
-    overflow: "hidden",
-    paddingVertical: moderateScale(14),
-    paddingRight: moderateScale(14),
-    minHeight: verticalScale(88),
-  },
+card: {
+  flexDirection: "row",
+  alignItems: "center",
+  backgroundColor: "#fff",
+  borderRadius: scaleSize(14),
+  overflow: "hidden",
+  paddingVertical: moderateScale(14),
+  paddingRight: moderateScale(14),
+  minHeight: verticalScale(88),
+},
   accentBar: {
     width: scaleSize(5),
     alignSelf: "stretch",

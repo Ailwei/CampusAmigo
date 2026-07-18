@@ -6,40 +6,44 @@ import { useUser } from "@/context/userContext";
 import api from "@/utils/api";
 import { moderateScale, scaleSize, verticalScale } from "@/utils/responsive";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
-
 
 export default function Home() {
   const { width } = useWindowDimensions();
-  const { user } = useUser();
-  const [classes, setClasses] = useState<ClassItem[]>([]);
+  const { user, loading: userLoading } = useUser();
+  const [subjects, setSubjects] = useState<ClassItem[]>([]);
   const [timetable, setTimetable] = useState<ClassSlot[]>([]);
 
   const [loading, setLoading] = useState(true);
   const isCompact = width < 380;
 
-  useEffect(() => {
-    const loadSummary = async () => {
-      try {
-        const res = await api.get("/onboarding/summary");
-        console.log(res.data.data)
-        if (res.data.success) {
-          setClasses(res.data.data.classes || []);
-          setTimetable(res.data.data.timetable || []);
-        }
-        console.log("sumary", res.data.data)
+  const loadSummary = async () => {
+  try {
+    setLoading(true);
 
-      } catch (error: any) {
-        Alert.alert("Error", error?.response?.data?.message || "Failed to load summary");
-      } finally {
-        setLoading(false);
-      }
-    };
+    const res = await api.get("/timetable/summary");
 
+    if (res.data.success) {
+      setSubjects(res.data.data.subjects || []);
+      setTimetable(res.data.data.timetable || []);
+    }
+  } catch (error: any) {
+    Alert.alert(
+      "Error",
+      error?.response?.data?.message || "Failed to load summary"
+    );
+  } finally {
+    setLoading(false);
+  }
+};
+
+useFocusEffect(
+  useCallback(() => {
     loadSummary();
-  }, []);
+  }, [])
+);
 
   const today = new Date().toLocaleDateString("en-US", { weekday: "short" });
   const todaysClasses = timetable.filter((item) => item.day.startsWith(today));
@@ -89,17 +93,17 @@ export default function Home() {
   };
 
 
-  if (loading) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.greeting}>...</Text>
-      </View>
-    );
-  }
+ if (loading || userLoading) {
+  return (
+    <View style={styles.container}>
+      <Text style={styles.greeting}>...</Text>
+    </View>
+  );
+}
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
-      <Text style={styles.greeting}>Welcome Back, {user?.firstName || user?.name || "there"}</Text>
+      <Text style={styles.greeting}>Welcome Back, {user?.firstName || user?.name}</Text>
       <Text style={styles.notification}>
         You have {todaysClasses.length} class{todaysClasses.length !== 1 ? "es" : ""} today.
       </Text>
@@ -107,7 +111,7 @@ export default function Home() {
       <View style={[styles.statsContainer, isCompact && styles.statsContainerCompact]}>
         <View style={styles.card}>
           <MaterialCommunityIcons name="book-education" size={moderateScale(28, 0.4, width)} color={COLORS.blue} />
-          <Text style={styles.number}>{classes.length}</Text>
+          <Text style={styles.number}>{subjects.length}</Text>
           <Text style={styles.label}>Subjects</Text>
         </View>
 
@@ -139,10 +143,10 @@ export default function Home() {
                 </View>
                 <View style={styles.classInfo}>
                   <Text style={styles.subject} numberOfLines={1}>
-                    {item.subject.name}
+                    {item.subject?.name}
                   </Text>
                   <Text style={styles.subjectCode} numberOfLines={1}>
-                    {item.subject.code}
+                    {item.subject?.code}
                   </Text>
                   <View style={styles.timeRow}>
                     <Feather name="clock" size={14} color={COLORS.navySoft} />
@@ -165,9 +169,9 @@ export default function Home() {
           {todaysClasses.length === 0
             ? "No classes today — enjoy the free time."
             : currentClass
-              ? `Now: ${currentClass.subject.name} until ${currentClass.endTime}`
+              ? `Now: ${currentClass.subject?.name} until ${currentClass.endTime}`
               : nextClass
-                ? `Next up: ${nextClass.subject.name} at ${nextClass.startTime}`
+                ? `Next up: ${nextClass.subject?.name} at ${nextClass.startTime}`
                 : "You're done for today — nice work."}
         </Text>
       </View>
@@ -182,7 +186,7 @@ export default function Home() {
         <ExamList />
       </View>
 
-      <Pressable style={styles.scheduleButton} onPress={() => router.push("/screens/weeklyTimeTable")}>
+      <Pressable style={styles.scheduleButton} onPress={() => router.push("/screens/weekleySchedule")}>
         <Ionicons name="calendar" size={22} color="#fff" />
         <Text style={styles.scheduleButtonText}>View Weekly Timetable</Text>
       </Pressable>

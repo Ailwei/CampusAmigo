@@ -1,16 +1,21 @@
 import React, { createContext, useState, useContext, ReactNode } from "react";
 
 export type ClassItem = {
+  [x: string]: any;
   name: string;
   code: string;
   room: string;
 };
 
 export interface ClassSlot {
+  room: any;
+  lecturer: any;
+  id: string;
   day: string;
   startTime: string;
   endTime: string;
-  subject: ClassItem;
+  subjectId: string;
+  subject?: ClassItem;
   updatedAt?: number;
 }
 

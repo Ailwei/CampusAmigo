@@ -9,98 +9,146 @@ const ok = (res: Response, message: string, data?: any, status = 200) =>
 const fail = (res: Response, message: string, status = 400) =>
   res.status(status).json({ success: false, message });
 
-export const addAssignmentController = async (req: AuthRequest, res: Response) => {
+export const addAssignmentController = async (
+  req: AuthRequest,
+  res: Response
+) => {
   try {
     const userId = req.user?.userId;
-    const { title, subject, due, progress } = req.body;
+    const { title, subjectId, due, progress } = req.body;
 
     if (!userId) return fail(res, "Unauthorized", 401);
-    if (!title || !subject || !due) {
-      return fail(res, "Title, subject, and due date are required", 400);
+
+    if (!title || !subjectId || !due) {
+      return fail(res, "Title, subjectId, and due date are required", 400);
     }
 
     const userRef = db.collection("users").doc(userId);
+
     const userSnap = await userRef.get();
-    if (!userSnap.exists) return fail(res, "User not found", 404);
+
+    if (!userSnap.exists) {
+      return fail(res, "User not found", 404);
+    }
 
     const userData = userSnap.data();
     const assignments = userData?.assignments || [];
-    
+
     const normalize = (val: any) =>
-      typeof val === "string" ? val.trim().toLowerCase() : "";
+      typeof val === "string"
+        ? val.trim().toLowerCase()
+        : "";
 
-    const normalizedSubject = normalize(subject);
-
-    console.log("Incoming:", {
-  title,
-  subject,
-});
-
-  const isDuplicate = assignments.some((a: any) => {
-  const existingSubject =
-    typeof a.subject === "string"
-      ? a.subject
-      : a.subject?.name;
-
-  return normalize(existingSubject) === normalizedSubject;
-});
+    const isDuplicate = assignments.some(
+      (a: any) => normalize(a.title) === normalize(title)
+    );
 
     if (isDuplicate) {
       return fail(
         res,
-        `An assignment called "${subject}" already exists !`,
+        `An assignment called "${title}" already exists!`,
         409
       );
     }
 
+    const now = Date.now();
+
     const assignment = {
+      id: `assignment_${now}`,
       title,
-      subject,
+      subjectId,
       due,
       progress: progress ?? 0,
-      createdAt: Date.now(),
+      createdAt: now,
     };
 
-    const updatedAssignments = [...assignments, assignment];
-    await userRef.update({ assignments: updatedAssignments, updatedAt: Date.now() });
+    const updatedAssignments = [
+      ...assignments,
+      assignment,
+    ];
 
-    return ok(res, "Assignment added successfully", { assignments: updatedAssignments });
+    await userRef.update({
+      assignments: updatedAssignments,
+      updatedAt: now,
+    });
+
+    return ok(res, "Assignment added successfully", {
+      assignments: updatedAssignments,
+    });
+
   } catch (error) {
     console.error("ADD ASSIGNMENT ERROR:", error);
-    return fail(res, (error as any)?.message || "Internal server error", 500);
+
+    return fail(
+      res,
+      (error as any)?.message || "Internal server error",
+      500
+    );
   }
 };
 
-export const getAssignmentsController = async (req: AuthRequest, res: Response) => {
+export const getAssignmentsController = async (
+  req: AuthRequest,
+  res: Response
+) => {
   try {
     const userId = req.user?.userId;
-    if (!userId) return fail(res, "Unauthorized", 401);
+
+    if (!userId) {
+      return fail(res, "Unauthorized", 401);
+    }
 
     const userRef = db.collection("users").doc(userId);
     const userSnap = await userRef.get();
-    if (!userSnap.exists) return fail(res, "User not found", 404);
+
+    if (!userSnap.exists) {
+      return fail(res, "User not found", 404);
+    }
 
     const userData = userSnap.data();
+
     const assignments = userData?.assignments || [];
+    const subjects = userData?.subjects || [];
 
-    const sorted = assignments.sort(
-      (a: any, b: any) => new Date(a.due).getTime() - new Date(b.due).getTime()
-    ).map(formatRetrievedEntry);
+    const sorted = assignments
+      .sort(
+        (a: any, b: any) =>
+          new Date(a.due).getTime() - new Date(b.due).getTime()
+      )
+      .map((assignment: any) => {
+        const subject =
+          subjects.find((s: any) => {
+            const id = s.id || s.subjectId || s._id;
+            return id === assignment.subjectId;
+          }) || null;
 
-    return ok(res, "Assignments fetched", { assignments: sorted });
+        return formatRetrievedEntry({
+          ...assignment,
+          subject,
+        });
+      });
+
+    return ok(res, "Assignments fetched", {
+      assignments: sorted,
+    });
   } catch (error) {
     console.error("GET ASSIGNMENTS ERROR:", error);
-    return fail(res, (error as any)?.message || "Internal server error", 500);
+
+    return fail(
+      res,
+      (error as any)?.message || "Internal server error",
+      500
+    );
   }
 };
 
 export const updateAssignmentProgressController = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.userId;
-    const { title, progress } = req.body;
+    const { id, progress } = req.body;
 
     if (!userId) return fail(res, "Unauthorized", 401);
-    if (!title || progress == null) {
+    if (!id || progress == null) {
       return fail(res, "Title and progress are required", 400);
     }
 
@@ -112,7 +160,7 @@ export const updateAssignmentProgressController = async (req: AuthRequest, res: 
     const assignments = userData?.assignments || [];
 
     const updatedAssignments = assignments.map((a: any) =>
-      a.title === title ? { ...a, progress } : a
+      a.id === id ? { ...a, progress } : a
     );
 
     await userRef.update({ assignments: updatedAssignments, updatedAt: Date.now() });
@@ -126,10 +174,10 @@ export const updateAssignmentProgressController = async (req: AuthRequest, res: 
 export const deleteAssignmentController = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.userId;
-    const { title } = req.body;
+    const { id } = req.body;
 
     if (!userId) return fail(res, "Unauthorized", 401);
-    if (!title) return fail(res, "Assignment title is required", 400);
+    if (!id) return fail(res, "Assignment id is required", 400);
 
     const userRef = db.collection("users").doc(userId);
     const userSnap = await userRef.get();
@@ -138,7 +186,7 @@ export const deleteAssignmentController = async (req: AuthRequest, res: Response
     const userData = userSnap.data();
     const assignments = userData?.assignments || [];
 
-    const updatedAssignments = assignments.filter((a: any) => a.title !== title);
+    const updatedAssignments = assignments.filter((a: any) => a.id !== id);
 
     await userRef.update({ assignments: updatedAssignments, updatedAt: Date.now() });
 

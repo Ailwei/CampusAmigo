@@ -28,7 +28,6 @@ export default function Signup() {
       );
    router.push("/screens/login");
     } catch (error: any) {
-      console.log(error);
       Alert.alert(
         "Register error",
         error?.response?.data?.message || "Something went wrong"

@@ -2,7 +2,6 @@ import COLORS from "@/constants/color";
 import { useUser } from "@/context/userContext";
 import api from "@/utils/api";
 import { Ionicons } from "@expo/vector-icons";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { useEffect, useState, useMemo } from "react";
 import {
     ActivityIndicator,
@@ -34,7 +33,9 @@ type RawTaskItem = {
     _id?: string;
     createdAt: number;
     date: string;
+    assignmentId: string,
     subject: string;
+    subjectId: string;
     topics: Topic[];
 };
 
@@ -43,6 +44,8 @@ type TopicTask = {
     taskId: string | undefined;
     createdAt: number;
     subject: string;
+    assignmentId: string,
+    subjectId: string;
     date: string;
     topicIndex: number;
     topicName: string;
@@ -53,7 +56,9 @@ type TaskGroup = {
     key: string;
     taskId: string | undefined;
     createdAt: number;
+    assignmentId: string,
     subject: string;
+    subjectId: string;
     date: string;
     topics: TopicTask[];
 };
@@ -86,12 +91,15 @@ const flattenToTasks = (items: RawTaskItem[]): TopicTask[] => {
 
     items.forEach((task) => {
         const groupKey = (task._id ?? task.createdAt).toString();
+
         task.topics.forEach((topic, index) => {
             tasks.push({
                 key: `${groupKey}-${index}`,
+                assignmentId: task.assignmentId,
                 taskId: task._id,
                 createdAt: task.createdAt,
                 subject: task.subject,
+                subjectId: task.subjectId,
                 date: task.date,
                 topicIndex: index,
                 topicName: getTopicName(topic),
@@ -105,61 +113,71 @@ const flattenToTasks = (items: RawTaskItem[]): TopicTask[] => {
 
 const groupTasks = (tasks: TopicTask[]): TaskGroup[] => {
     const groups = new Map<string, TaskGroup>();
+
     tasks.forEach((task) => {
-        const groupKey = (task.taskId ?? task.createdAt)?.toString();
-        const existing = groups.get(groupKey);
-        if (existing) {
-            existing.topics.push(task);
-        } else {
-            groups.set(groupKey, {
-                key: groupKey,
-                taskId: task.taskId,
-                createdAt: task.createdAt,
+        const key = task.assignmentId;
+
+        if (!groups.has(key)) {
+            groups.set(key, {
+                key,
+                assignmentId: key,
                 subject: task.subject,
+                subjectId: task.subjectId,
                 date: task.date,
-                topics: [task],
+                topics: [],
+                taskId: undefined,
+                createdAt: 0
             });
         }
+
+        groups.get(key)!.topics.push(task);
     });
-    return Array.from(groups.values()).sort((a, b) => daysUntil(a.date) - daysUntil(b.date));
+
+    return Array.from(groups.values()).sort(
+        (a, b) => daysUntil(a.date) - daysUntil(b.date)
+    );
 };
 
 export default function AssignmentTaskScreen() {
     const { user, loadUser } = useUser();
     const {
-        subject: assignmentSubject,
+        assignmentId,
+        subjectId,
+        title,
+        subject,
         due,
-    } = useLocalSearchParams();
+        progress,
+    } = useLocalSearchParams<{
+        assignmentId?: string;
+        subjectId?: string;
+        title?: string;
+        subject?: string;
+        due?: string;
+        progress?: string;
+    }>();
 
+    useEffect(() => {
+    }, [assignmentId, subjectId, title, subject, due, progress]);
 
+    const hasFixedSubject = typeof subjectId === "string" && subjectId.length > 0;
 
     const [assignmetTasks, setAssignmetTasks] = useState<RawTaskItem[]>([]);
     const [loading, setLoading] = useState(true);
 
     const [showAddModal, setShowAddModal] = useState(false);
-    const [subject, setSubject] = useState("");
     const [topics, setTopics] = useState<{ name: string; progress: number }[]>([]);
     const [topicInput, setTopicInput] = useState("");
-    const [showDatePicker, setShowDatePicker] = useState(false);
 
-
-    const assignmentDueDate =
-        typeof due === "string" ? new Date(due) : new Date();
-
+    const assignmentDueDate = typeof due === "string" ? new Date(due) : new Date();
     const [date, setDate] = useState<Date>(assignmentDueDate);
 
-    const assignmentDateStr =
-        typeof due === "string"
-            ? due
-            : null; const router = useRouter(); const daysToAssignment = assignmentDateStr ? daysUntil(assignmentDateStr) : null;
+    const assignmentDateStr = typeof due === "string" ? due : null;
+    const router = useRouter();
+    const daysToAssignment = assignmentDateStr ? daysUntil(assignmentDateStr) : null;
 
     useEffect(() => {
         if (!user) loadUser();
     }, [user, loadUser]);
-
-    useEffect(() => {
-        if (typeof assignmentSubject === "string") setSubject(assignmentSubject);
-    }, [assignmentSubject]);
 
     useEffect(() => {
         const loadTask = async () => {
@@ -168,7 +186,6 @@ export default function AssignmentTaskScreen() {
                 if (res.data.success && Array.isArray(res.data.data.assignmentTasks)) {
                     setAssignmetTasks(res.data.data.assignmentTasks);
                 }
-
             } catch (error: any) {
                 Alert.alert("Error", error?.response?.data?.message || "Failed to load revisions");
             } finally {
@@ -182,10 +199,6 @@ export default function AssignmentTaskScreen() {
         setTopicInput("");
         setTopics([]);
         setDate(assignmentDueDate);
-
-        if (typeof assignmentSubject !== "string") {
-            setSubject("");
-        }
     };
 
     const addTopic = () => {
@@ -200,18 +213,13 @@ export default function AssignmentTaskScreen() {
     };
 
     const handleAddTask = async () => {
-        if (!subject || topics.length === 0) {
-            Alert.alert("Missing Fields", "Subject and at least one topic are required.");
-            return;
-        }
+
 
         try {
             const res = await api.post("/assignment/add-task", {
-                subject,
+                assignmentId,
                 topics,
-                date: toDateString(date),
             });
-
             if (res.data.success) {
                 const updated = await api.get("/assignment/get-tasks");
                 setAssignmetTasks(updated.data.data.assignmentTasks || []);
@@ -247,49 +255,53 @@ export default function AssignmentTaskScreen() {
         );
     };
 
-    const updateTopicProgress = async (
-        taskId: string | undefined,
-        createdAt: number,
-        topicIndex: number,
-        subject: string,
-        topicName: string,
-        newProgress: number
-    ) => {
-        const clamped = Math.min(100, Math.max(0, newProgress));
+   const updateTopicProgress = async (
+    taskId: string | undefined,
+    createdAt: number,
+    topicIndex: number,
+    taskAssignmentId: string,
+    topicName: string,
+    newProgress: number
+) => {
+    const clamped = Math.min(100, Math.max(0, newProgress));
 
-        setTopicProgressLocal(taskId, createdAt, topicIndex, clamped);
+    setTopicProgressLocal(taskId, createdAt, topicIndex, clamped);
 
-        try {
-            const res = await api.patch("/assignment/update-task-progress", {
-                subject,
-                topic: topicName,
-                progress: clamped,
-            });
+    try {
+        const res = await api.patch("/assignment/update-task-progress", {
+            assignmentId,
+            topic: topicName,
+            progress: clamped,
+        });
 
-            if (res.data.success && Array.isArray(res.data.data.tasks)) {
-                setAssignmetTasks(res.data.data.tasks);
-            }
-        } catch (error: any) {
-            Alert.alert("Error", error?.response?.data?.message || "Failed to update progress");
+        if (
+            res.data.success &&
+            Array.isArray(res.data.data.assignmentTasks) &&
+            res.data.data.assignmentTasks.length > 0
+        ) {
+            setAssignmetTasks(res.data.data.assignmentTasks);
         }
-    };
+    } catch (error: any) {
+        Alert.alert("Error", error?.response?.data?.message || "Failed to update progress");
+    }
+};
+
+    const hasAssignmentId = typeof assignmentId === "string" && assignmentId.length > 0;
 
     const filteredTasks = useMemo(() => {
-        const result = typeof assignmentSubject === "string"
-            ? assignmetTasks.filter((r) => r.subject.toLowerCase() === assignmentSubject.toLowerCase())
+        const result = hasAssignmentId
+            ? assignmetTasks.filter((r) => r.assignmentId === assignmentId)
             : assignmetTasks;
 
         return groupTasks(flattenToTasks(result));
-    }, [assignmetTasks, assignmentSubject]);
+    }, [assignmetTasks, hasAssignmentId, assignmentId]);
 
     const assignmentProgress = useMemo(() => {
-        if (typeof assignmentSubject !== "string") return null;
-        const subjectAsignmentTask = assignmetTasks.filter(
-            (r) => r.subject.toLowerCase() === assignmentSubject.toLowerCase()
-        );
+        if (!hasAssignmentId) return null;
+        const subjectAsignmentTask = assignmetTasks.filter((r) => r.assignmentId === assignmentId);
         const allTopics = subjectAsignmentTask.flatMap((r) => r.topics);
         return { done: allTopics.filter((t) => t.progress >= 100).length, total: allTopics.length };
-    }, [assignmetTasks, assignmentSubject]);
+    }, [assignmetTasks, hasAssignmentId, assignmentId]);
 
     if (loading) {
         return (
@@ -307,8 +319,12 @@ export default function AssignmentTaskScreen() {
                     <Pressable style={styles.backRow} onPress={() => router.back()} hitSlop={8}>
                         <Ionicons name="arrow-back" size={22} color={COLORS.navy} />
                         <View style={{ marginLeft: 10 }}>
-                            <Text style={styles.breadcrumb}>{typeof assignmentSubject === "string" ? "Assignment" : "Home"}</Text>
-                            <Text style={styles.title}>{typeof assignmentSubject === "string" ? assignmentSubject : "Revisions"}</Text>
+                            <Text style={styles.title}>
+                                {title || "Assignment"}
+                            </Text>
+                            <Text style={styles.breadcrumb}>
+                                {subject || "Subject"}
+                            </Text>
                         </View>
                     </Pressable>
 
@@ -347,7 +363,7 @@ export default function AssignmentTaskScreen() {
                         return (
                             <View style={styles.card}>
                                 <View style={styles.cardHeader}>
-                                    <Text style={styles.subjectTitle}>{group.subject}</Text>
+                                    <Text style={styles.subjectTitle}>{group.subject || subject}</Text>
                                     <View style={[styles.badge, { backgroundColor: dueColor(left) }]}>
                                         <Text style={styles.badgeText}>{left <= 0 ? "Due!" : `${left}d`}</Text>
                                     </View>
@@ -358,38 +374,32 @@ export default function AssignmentTaskScreen() {
                                 </Text>
 
                                 {assignmentDateStr && (
-                                    <Text style={{
-                                        color: left <= daysToAssignment! ? "#10B981" : "#EF4444",
-                                        fontSize: moderateScale(13),
-                                        marginTop: 4
-                                    }}>
-                                        <View style={styles.statusRow}>
-                                            <Ionicons
-                                                name={left <= daysToAssignment! ? "checkmark-circle" : "warning"}
-                                                size={16}
-                                                color={left <= daysToAssignment! ? "#10B981" : "#EF4444"}
-                                            />
-                                            <Text
-                                                style={{
-                                                    marginLeft: 6,
-                                                    color: left <= daysToAssignment! ? "#10B981" : "#EF4444",
-                                                    fontSize: moderateScale(13),
-                                                    fontWeight: "600",
-                                                }}
-                                            >
-                                                {left <= daysToAssignment!
-                                                    ? "On track for assignment"
-                                                    : "Task after assignment"}
-                                            </Text>
-                                        </View>
-                                    </Text>
+                                    <View style={styles.statusRow}>
+                                        <Ionicons
+                                            name={left <= daysToAssignment! ? "checkmark-circle" : "warning"}
+                                            size={16}
+                                            color={left <= daysToAssignment! ? "#10B981" : "#EF4444"}
+                                        />
+                                        <Text
+                                            style={{
+                                                marginLeft: 6,
+                                                color: left <= daysToAssignment! ? "#10B981" : "#EF4444",
+                                                fontSize: moderateScale(13),
+                                                fontWeight: "600",
+                                            }}
+                                        >
+                                            {left <= daysToAssignment!
+                                                ? "On track for assignment"
+                                                : "Task after assignment"}
+                                        </Text>
+                                    </View>
                                 )}
 
                                 {group.topics.map((topic) => (
                                     <View key={topic.key} style={styles.topicRow}>
                                         <Pressable
                                             style={styles.checkbox}
-                                            onPress={() => updateTopicProgress(topic.taskId, topic.createdAt, topic.topicIndex, topic.subject, topic.topicName, topic.progress >= 100 ? 0 : 100)}
+                                            onPress={() => updateTopicProgress(topic.taskId, topic.createdAt, topic.topicIndex, topic.subjectId, topic.topicName, topic.progress >= 100 ? 0 : 100)}
                                         >
                                             <Ionicons
                                                 name={topic.progress >= 100 ? "checkmark-circle" : "ellipse-outline"}
@@ -410,7 +420,7 @@ export default function AssignmentTaskScreen() {
                                                 step={5}
                                                 value={topic.progress}
                                                 onValueChange={(val) => setTopicProgressLocal(topic.taskId, topic.createdAt, topic.topicIndex, val)}
-                                                onSlidingComplete={(val) => updateTopicProgress(topic.taskId, topic.createdAt, topic.topicIndex, topic.subject, topic.topicName, val)}
+                                                onSlidingComplete={(val) => updateTopicProgress(topic.taskId, topic.createdAt, topic.topicIndex, topic.subjectId, topic.topicName, val)}
                                                 minimumTrackTintColor={COLORS.blue}
                                                 maximumTrackTintColor="#E5E7EB"
                                                 thumbTintColor={COLORS.blue}
@@ -431,7 +441,7 @@ export default function AssignmentTaskScreen() {
                 <Modal visible={showAddModal} animationType="slide" presentationStyle="pageSheet">
                     <SafeAreaView style={styles.modalContainer}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>New Revision</Text>
+                            <Text style={styles.modalTitle}>New Assignment Task</Text>
                             <Pressable onPress={() => { setShowAddModal(false); resetForm(); }}>
                                 <Text style={styles.cancelText}>Cancel</Text>
                             </Pressable>
@@ -439,16 +449,13 @@ export default function AssignmentTaskScreen() {
 
                         <ScrollView style={styles.modalContent} keyboardShouldPersistTaps="handled">
                             <Text style={styles.label}>Subject</Text>
-                            {typeof assignmentSubject === "string" ? (
-                                <Text style={styles.fixedSubject}>{assignmentSubject}</Text>
-                            ) : (
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Enter subject name"
-                                    value={subject}
-                                    onChangeText={setSubject}
-                                />
-                            )}
+
+
+                            <TextInput
+                                style={styles.input}
+                                value={subject || ""}
+                                editable={false}
+                            />
 
                             <Text style={styles.label}>Topics</Text>
                             <View style={styles.inputRow}>
@@ -498,7 +505,7 @@ export default function AssignmentTaskScreen() {
                         </ScrollView>
 
                         <Pressable style={styles.saveButton} onPress={handleAddTask}>
-                            <Text style={styles.saveButtonText}>Save Revision</Text>
+                            <Text style={styles.saveButtonText}>Save Task</Text>
                         </Pressable>
                     </SafeAreaView>
                 </Modal>

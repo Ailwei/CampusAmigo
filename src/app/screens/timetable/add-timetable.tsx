@@ -1,10 +1,8 @@
 import COLORS from "@/constants/color";
-import { ClassItem, useOnboarding } from "@/context/onboardingContext";
 import api from "@/utils/api";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
-import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -18,8 +16,22 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { scaleSize, moderateScale, verticalScale } from "@/utils/responsive";
-
+import { router } from "expo-router";
 export const DAYS = ["Mon", "Tues", "Wed", "Thurs", "Fri", "Sat", "Sun"];
+
+export interface ClassItem {
+  id: string;
+  name: string;
+  code?: string;
+  room?: string;
+}
+
+interface TimetableSlot {
+  subject: ClassItem;
+  day: string;
+  startTime: string;
+  endTime: string;
+}
 
 const toDate = (time: string) => {
   const [h, m] = time.split(":").map(Number);
@@ -34,14 +46,15 @@ const toTimeString = (date: Date) => {
   return `${h}:${m}`;
 };
 
-
 const isAfter = (a: string, b: string) => {
   if (!a || !b) return true;
   return a > b;
 };
 
+
 export default function Timetable() {
-  const { classes, timetable, setTimetable } = useOnboarding();
+  const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [timetable, setTimetable] = useState<TimetableSlot[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [subject, setSubject] = useState<ClassItem | null>(null);
@@ -53,39 +66,51 @@ export default function Timetable() {
   const [justAddedKey, setJustAddedKey] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const handleNext = () => {
-    const missingSubjects = classes.filter(
-      (cls) => !timetable.some((slot) => slot.subjectId === cls.id)
-    );
 
-    if (missingSubjects.length > 0) {
-      Alert.alert(
-        "Incomplete Timetable",
-        `Please add these subjects to your timetable before continuing:\n\n${missingSubjects
-          .map((subject) => `• ${subject.name}`)
-          .join("\n")}`
-      );
-      return;
-    }
 
-    router.push("/screens/onBoarding/summary");
-  };
+const handleNext = () => {
+  router.push("/screens/onBoarding/summary");
+};
 
   useEffect(() => {
-    const loadTimetable = async () => {
+    const loadData = async () => {
       try {
-        const res = await api.get("/onboarding/view-time-table");
-        if (res.data.success) {
-          setTimetable(res.data.data.timetable);
+        const timetableRes = await api.get("/timetable/view-time-table");
+
+        if (timetableRes.data.success) {
+          setTimetable(timetableRes.data.data.timetable);
         }
+ ;
       } catch (error: any) {
         Alert.alert("Error", error?.response?.data?.message || "Failed to load timetable");
       } finally {
         setLoading(false);
       }
     };
-    loadTimetable();
+    loadData();
   }, []);
+
+    useEffect(() => {
+  const loadSubjects = async () => {
+
+    try {
+      const subjectsRes = await api.get("/subjects/get-subjects");
+      if (subjectsRes.data.success) {
+        setClasses(subjectsRes.data.data.subjects);
+      }
+    } catch (error: any) {
+    
+
+      Alert.alert(
+        "Error",
+        error?.response?.data?.message || "Failed to load subjects"
+      );
+    }
+  };
+
+  loadSubjects();
+}, []);
+  
 
   const handleStartChange = (_: any, selectedDate?: Date) => {
     setShowStartPicker(Platform.OS === "ios");
@@ -114,11 +139,12 @@ export default function Timetable() {
 
     setSaving(true);
     try {
-      const res = await api.post("/onboarding/add-time-table", {
-        subjectId: subject?.id,
+      const res = await api.post("/timetable/add-classes", {
+        subjectId:subject.id,
         day,
         startTime,
         endTime,
+        
       });
       if (res.data.success) {
         setTimetable(res.data.data.timetable);
@@ -155,7 +181,7 @@ export default function Timetable() {
                 >
                   <Picker.Item label="Select subject" value={null} color={COLORS.navySoft} />
                   {classes.map((item) => (
-                    <Picker.Item key={item.id} label={item.name} value={item} />
+                    <Picker.Item key={item.name} label={item.name} value={item} />
                   ))}
                 </Picker>
               </View>
@@ -255,20 +281,15 @@ export default function Timetable() {
           </>
         }
         renderItem={({ item }) => {
-          const currentSubject = classes.find(
-            (cls) => cls.id === item.subjectId
-          );
-
-          const key = `${item.subjectId}-${item.day}-${item.startTime}`;
+          const key = `${item.subject.name}-${item.day}-${item.startTime}`;
           const isJustAdded = key === justAddedKey;
-
           return (
             <View style={[styles.card, isJustAdded && styles.cardHighlight]}>
               <View style={styles.cardHeader}>
                 <MaterialCommunityIcons name="book-open-page-variant" size={20} color={COLORS.blue} />
                 <Text style={styles.subject}>
-                  {currentSubject?.name ?? "Unknown Subject"}
-                  {currentSubject?.code ? ` (${currentSubject.code})` : ""}
+                  {item.subject.name}
+                  {item.subject.code ? ` (${item.subject.code})` : ""}
                 </Text>
               </View>
               <View style={styles.cardRow}>
@@ -283,18 +304,18 @@ export default function Timetable() {
           );
         }}
         ListFooterComponent={
-          <Pressable
-            style={({ pressed }) => [
-              styles.nextButton,
-              pressed && styles.nextButtonPressed,
-            ]}
-            onPress={handleNext}
-          >
-            <Text style={styles.nextButtonText}>Next</Text>
-            <Ionicons name="arrow-forward-circle" size={20} color="#fff" />
-          </Pressable>
-        }
-      />
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.nextButton,
+                    pressed && styles.nextButtonPressed,
+                  ]}
+                  onPress={handleNext}
+                >
+                  <Text style={styles.nextButtonText}>Next</Text>
+                  <Ionicons name="arrow-forward-circle" size={20} color="#fff" />
+                </Pressable>
+              }
+            />
     </SafeAreaView>
   );
 }
@@ -448,19 +469,6 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(14),
     color: COLORS.navySoft,
   },
-
-  nextButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: COLORS.orange,
-    padding: scaleSize(14),
-    borderRadius: scaleSize(10),
-    justifyContent: "center",
-    marginTop: verticalScale(20),
-  },
-  nextButtonPressed: {
-    opacity: 0.85,
-  },
   codeBox: {
     borderWidth: 1,
     borderColor: "#E2E8F2",
@@ -476,8 +484,19 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: COLORS.navy,
   },
-
-  nextButtonText: {
+   nextButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.orange,
+    padding: scaleSize(14),
+    borderRadius: scaleSize(10),
+    justifyContent: "center",
+    marginTop: verticalScale(20),
+  },
+   nextButtonPressed: {
+    opacity: 0.85,
+  },
+   nextButtonText: {
     color: "#fff",
     fontWeight: "700",
     fontSize: moderateScale(16),

@@ -43,7 +43,6 @@ const { loadUser } = useUser();
     }
 
   } catch (error: any) {
-    console.log("Login failed:", error?.response?.data || error.message);
 
     Alert.alert(
       "Login failed",

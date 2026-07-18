@@ -1,5 +1,5 @@
 import COLORS from "@/constants/color";
-import { ClassItem, ClassSlot } from "@/context/onboardingContext";
+import { ClassItem, ClassSlot, useOnboarding } from "@/context/onboardingContext";
 import api from "@/utils/api";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -21,10 +21,11 @@ const matchesToday = (day: string) => {
 };
 
 export default function Summary() {
-  const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [subjects, setSubjects] = useState<ClassItem[]>([]);
   const [timetable, setTimetable] = useState<ClassSlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { resetOnboarding } = useOnboarding();
 
   const loadSummary = useCallback(async () => {
     setLoading(true);
@@ -32,7 +33,7 @@ export default function Summary() {
     try {
       const res = await api.get("/onboarding/summary");
       if (res.data.success) {
-        setClasses(res.data.data.classes || []);
+        setSubjects(res.data.data.subjects || []);
         setTimetable(res.data.data.timetable || []);
       }
     } catch (err: any) {
@@ -84,10 +85,10 @@ export default function Summary() {
             <Text style={styles.sectionTitle}>Subjects</Text>
           </View>
         </View>
-        {classes.length === 0 ? (
+        {subjects.length === 0 ? (
           <Text style={styles.empty}>No subjects added.</Text>
         ) : (
-          classes.map((subject, index) => (
+          subjects.map((subject, index) => (
             <View key={index} style={styles.subjectCard}>
               <Ionicons name="book-outline" size={20} color={COLORS.navySoft} />
               <Text style={styles.subjectText}>
@@ -112,8 +113,8 @@ export default function Summary() {
           todaysClasses.map((item, index) => (
             <View key={index} style={styles.classCard}>
               <Text style={styles.classSubject}>
-                {item.subject.name}
-                {item.subject.code ? ` (${item.subject.code})` : ""}
+                {item.subject?.name}
+                {item.subject?.code ? ` (${item.subject?.code})` : ""}
               </Text>
 
               <View style={styles.classInfoRow}>
@@ -153,7 +154,11 @@ export default function Summary() {
 
       <Pressable
         style={({ pressed }) => [styles.startButton, pressed && styles.startButtonPressed]}
-        onPress={() => router.replace("/screens/(tabs)/home")}
+        onPress={() => {
+          resetOnboarding();
+          router.replace("/screens/(tabs)/home")
+        }}
+
       >
         <Text style={styles.startButtonText}>Start Using CampusAmigo</Text>
         <Ionicons name="rocket-outline" size={20} color="#fff" />

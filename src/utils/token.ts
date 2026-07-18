@@ -9,7 +9,8 @@ export const saveToken = async ({token}: Props) => {
   try {
     await AsyncStorage.setItem("token", token);
   } catch (error) {
-    console.log("Save token error:", error);
+    console.error("Save token error:", error);
+    throw error
   }
 };
 
@@ -18,8 +19,9 @@ export const getToken = async () => {
     const token = await AsyncStorage.getItem("token");
     return token;
   } catch (error) {
-    console.log("Get token error:", error);
-    return null;
+    console.error("Get token error:", error);
+    throw error
+
   }
 };
 
@@ -27,7 +29,8 @@ export const clearAuthSession = async () => {
   try {
     await AsyncStorage.removeItem("token");
   } catch (error) {
-    console.log("Clear auth session error:", error);
+    console.error("Clear auth session error:", error);
+    throw error
   }
 };
 
@@ -52,10 +55,12 @@ export const bootstrapAuth = async () => {
       loggedIn: true,
       user,
     };
-  } catch (error) {
-    return {
-      loggedIn: false,
-      user: null,
-    };
-  }
+  }catch (error) {
+  console.error("Bootstrap auth error:", error);
+
+  return {
+    loggedIn: false,
+    user: null,
+  };
+}
 };

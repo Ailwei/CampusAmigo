@@ -12,62 +12,62 @@ const fail = (res: Response, message: string, status = 400) =>
 export const addExamController = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.userId;
-    const { subject, code, date, venue, progress } = req.body;
-    console.log(req.body)
+    const { subjectId, date, venue, progress } = req.body;
 
     if (!userId) return fail(res, "Unauthorized", 401);
-    if (!subject) {
-      return fail(res, "Subject is required", 400);
+
+    if (!subjectId) {
+      return fail(res, "Missing required  fields", 400);
     }
-    if (!date) {
-      return fail(res, "Date is required", 400);
-    }
+
 
     const userRef = db.collection("users").doc(userId);
     const userSnap = await userRef.get();
-    if (!userSnap.exists) return fail(res, "User not found", 404);
+
+    if (!userSnap.exists) {
+      return fail(res, "User not found", 404);
+    }
 
     const userData = userSnap.data();
     const exams = userData?.exams || [];
 
-    const normalize = (val: any) =>
-      typeof val === "string" ? val.trim().toLowerCase() : "";
-
-   const normalizedSubject = normalize(subject);
-
-const isDuplicate = exams.some((e: any) => {
-  const existingSubject =
-    typeof e.subject === "string"
-      ? e.subject
-      : e.subject?.name;
-
-  return normalize(existingSubject) === normalizedSubject;
-});
+    const isDuplicate = exams.some(
+      (e: any) => e.subjectId === subjectId
+    );
 
     if (isDuplicate) {
       return fail(
         res,
-        `An exam for ${subject}  already exists !`,
+        "An exam for this subject already exists",
         409
       );
     }
 
+    const now = Date.now();
+
     const exam = {
-      subject,
-      code: code ?? "",
-      date: date,
+      id: `exam_${now}`,
+      subjectId,
+      date,
       venue: venue ?? "",
       progress: progress ?? 0,
-      createdAt: Date.now(),
+      createdAt: now,
     };
 
     const updatedExams = [...exams, exam];
-    await userRef.update({ exams: updatedExams, updatedAt: Date.now() });
 
-    return ok(res, "Exam added successfully", { exams: updatedExams });
+    await userRef.update({
+      exams: updatedExams,
+      updatedAt: now,
+    });
+
+    return ok(res, "Exam added successfully", {
+      exams: updatedExams,
+    });
+
   } catch (error) {
     console.error("ADD EXAM ERROR:", error);
-    return fail(res, (error as any)?.message || "Internal server error", 500);
+    return fail(res, "Internal server error", 500);
   }
 };
 
@@ -82,8 +82,15 @@ export const getExamsController = async (req: AuthRequest, res: Response) => {
 
     const userData = userSnap.data();
     const exams = userData?.exams || [];
+    const subjects = userData?.subjects || [];
+
+    const subjectMap = new Map(subjects.map((s: any) => [s.id, s]));
 
     const sorted = exams
+      .map((e: any) => ({
+        ...e,
+        subject: subjectMap.get(e.subjectId) || null,
+      }))
       .sort(
         (a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime()
       )
@@ -100,10 +107,9 @@ export const getExamsController = async (req: AuthRequest, res: Response) => {
 export const updateExamProgressController = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.userId;
-    const { code, progress } = req.body;
-
+    const { examId, progress } = req.body;
     if (!userId) return fail(res, "Unauthorized", 401);
-    if (!code || progress == null) {
+    if (!examId || progress == null) {
       return fail(res, "Exam code and progress are required", 400);
     }
 
@@ -115,7 +121,9 @@ export const updateExamProgressController = async (req: AuthRequest, res: Respon
     const exams = userData?.exams || [];
 
     const updatedExams = exams.map((e: any) =>
-      e.code === code ? { ...e, progress } : e
+      e.id === examId
+        ? { ...e, progress }
+        : e
     );
 
     await userRef.update({ exams: updatedExams, updatedAt: Date.now() });
@@ -129,10 +137,9 @@ export const updateExamProgressController = async (req: AuthRequest, res: Respon
 export const deleteExamController = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.userId;
-    const { code } = req.body;
-
+    const { examId } = req.body;
     if (!userId) return fail(res, "Unauthorized", 401);
-    if (!code) return fail(res, "Exam code is required", 400);
+    if (!examId) return fail(res, "Exam code is required", 400);
 
     const userRef = db.collection("users").doc(userId);
     const userSnap = await userRef.get();
@@ -141,8 +148,9 @@ export const deleteExamController = async (req: AuthRequest, res: Response) => {
     const userData = userSnap.data();
     const exams = userData?.exams || [];
 
-    const updatedExams = exams.filter((e: any) => e.code !== code);
-
+    const updatedExams = exams.filter(
+      (e: any) => e.id !== examId
+    );
     await userRef.update({ exams: updatedExams, updatedAt: Date.now() });
 
     return ok(res, "Exam deleted successfully", { exams: updatedExams });

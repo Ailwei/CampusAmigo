@@ -1,11 +1,14 @@
 import { Router } from "express";
-import { createUserController,getMeController ,forgotPasswordController, resetPasswordController, loginController, googleLoginController } from "../controller/authController";
+import { createUserController,getMeController ,forgotPasswordController, resetPasswordController, loginController, googleLoginController, deleteAccountController } from "../controller/authController";
 import { saveClassesController, saveTimetableController,getWeeklyCalendarController, getSummaryController } from "../controller/onBoardingController";
 import { addAssignmentController,getAssignmentsController,updateAssignmentProgressController, } from "../controller/assignmentsController";
 import { addExamController, getExamsController } from "../controller/examasController";
 import { addRevisionController, getRevisionsController, updateRevisionProgressController } from "../controller/revisionsController";
 import { authMiddleware } from "../midlwWare/middleWare";
 import { addAssignmentTaskController, deleteAssignmentTaskController, getAssignmentTasksController, updateAssignmentTaskProgressController } from "../controller/addAssignmentController";
+import { saveClassController, getTimetableController,saveSubjectController, getSubjectsController, updateSubjectController , updateClassSlotController,  deleteSubjectController } from "../controller/timetableController"; 
+
+
 
 const router = Router();
 
@@ -42,7 +45,16 @@ router.patch("/assignment/update-task-progress", authMiddleware,  updateAssignme
 router.delete("/assignment/delete-task", authMiddleware,  deleteAssignmentTaskController);
 
 
+router.post("/timetable/add-subjects", authMiddleware, saveSubjectController);
+router.post("/timetable/add-classes", authMiddleware, saveClassController);
+router.get("/timetable/get-classes", authMiddleware, getTimetableController);
+router.get("/timetable/view-time-table", authMiddleware, getWeeklyCalendarController);
+router.get("/timetable/summary", authMiddleware, getSummaryController);
 
+router.get("/subjects/get-subjects", authMiddleware, getSubjectsController)
+router.put("/timetable/update-subject", authMiddleware, updateSubjectController);
+router.put("/timetable/update-class-slot", authMiddleware, updateClassSlotController)
+router.delete("/subjects/delete-subject", authMiddleware, deleteSubjectController)
 
-
+router.delete("/auth/delete-account",authMiddleware,deleteAccountController);
 export default router;

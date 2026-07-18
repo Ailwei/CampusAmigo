@@ -23,7 +23,6 @@ export default function ForgotPassword() {
       params: { email },
     });
     } catch (error: any) {
-      console.log(error);
       Alert.alert(
         "Reset error",
         error?.response?.data?.message || "Something went wrong"

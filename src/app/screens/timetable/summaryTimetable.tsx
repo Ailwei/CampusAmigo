@@ -1,5 +1,4 @@
 import COLORS from "@/constants/color";
-import { ClassItem, useOnboarding } from "@/context/onboardingContext";
 import api from "@/utils/api";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -21,6 +20,18 @@ import { scaleSize, moderateScale, verticalScale } from "@/utils/responsive";
 
 export const DAYS = ["Mon", "Tues", "Wed", "Thurs", "Fri", "Sat", "Sun"];
 
+export interface ClassItem {
+  name: string;
+  code?: string;
+}
+
+interface TimetableSlot {
+  subject: ClassItem;
+  day: string;
+  startTime: string;
+  endTime: string;
+}
+
 const toDate = (time: string) => {
   const [h, m] = time.split(":").map(Number);
   const d = new Date();
@@ -34,14 +45,14 @@ const toTimeString = (date: Date) => {
   return `${h}:${m}`;
 };
 
-
 const isAfter = (a: string, b: string) => {
   if (!a || !b) return true;
   return a > b;
 };
 
 export default function Timetable() {
-  const { classes, timetable, setTimetable } = useOnboarding();
+  const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [timetable, setTimetable] = useState<TimetableSlot[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [subject, setSubject] = useState<ClassItem | null>(null);
@@ -54,29 +65,27 @@ export default function Timetable() {
   const [saving, setSaving] = useState(false);
 
   const handleNext = () => {
-    const missingSubjects = classes.filter(
-      (cls) => !timetable.some((slot) => slot.subjectId === cls.id)
-    );
-
-    if (missingSubjects.length > 0) {
-      Alert.alert(
-        "Incomplete Timetable",
-        `Please add these subjects to your timetable before continuing:\n\n${missingSubjects
-          .map((subject) => `• ${subject.name}`)
-          .join("\n")}`
-      );
+    if (timetable.length === 0) {
+      Alert.alert("Add at least one class before continuing.");
       return;
     }
 
-    router.push("/screens/onBoarding/summary");
+    router.push("/screens/timetable/summaryTimetable");
   };
 
   useEffect(() => {
-    const loadTimetable = async () => {
+    const loadData = async () => {
       try {
-        const res = await api.get("/onboarding/view-time-table");
-        if (res.data.success) {
-          setTimetable(res.data.data.timetable);
+        const [classesRes, timetableRes] = await Promise.all([
+          api.get("/classes/list"),
+          api.get("/timetable/view-time-table"),
+        ]);
+
+        if (classesRes.data.success) {
+          setClasses(classesRes.data.data.classes);
+        }
+        if (timetableRes.data.success) {
+          setTimetable(timetableRes.data.data.timetable);
         }
       } catch (error: any) {
         Alert.alert("Error", error?.response?.data?.message || "Failed to load timetable");
@@ -84,7 +93,7 @@ export default function Timetable() {
         setLoading(false);
       }
     };
-    loadTimetable();
+    loadData();
   }, []);
 
   const handleStartChange = (_: any, selectedDate?: Date) => {
@@ -114,8 +123,8 @@ export default function Timetable() {
 
     setSaving(true);
     try {
-      const res = await api.post("/onboarding/add-time-table", {
-        subjectId: subject?.id,
+      const res = await api.post("/timetable/add-classes", {
+        subject,
         day,
         startTime,
         endTime,
@@ -144,6 +153,7 @@ export default function Timetable() {
         keyExtractor={(_, index) => index.toString()}
         ListHeaderComponent={
           <>
+            <Text style={styles.title}>Your Weekly Timetable</Text>
             <Text style={styles.subtitle}>Add each class to your weekly schedule.</Text>
 
             <View style={styles.formCard}>
@@ -155,7 +165,7 @@ export default function Timetable() {
                 >
                   <Picker.Item label="Select subject" value={null} color={COLORS.navySoft} />
                   {classes.map((item) => (
-                    <Picker.Item key={item.id} label={item.name} value={item} />
+                    <Picker.Item key={item.name} label={item.name} value={item} />
                   ))}
                 </Picker>
               </View>
@@ -255,20 +265,15 @@ export default function Timetable() {
           </>
         }
         renderItem={({ item }) => {
-          const currentSubject = classes.find(
-            (cls) => cls.id === item.subjectId
-          );
-
-          const key = `${item.subjectId}-${item.day}-${item.startTime}`;
+          const key = `${item.subject.name}-${item.day}-${item.startTime}`;
           const isJustAdded = key === justAddedKey;
-
           return (
             <View style={[styles.card, isJustAdded && styles.cardHighlight]}>
               <View style={styles.cardHeader}>
                 <MaterialCommunityIcons name="book-open-page-variant" size={20} color={COLORS.blue} />
                 <Text style={styles.subject}>
-                  {currentSubject?.name ?? "Unknown Subject"}
-                  {currentSubject?.code ? ` (${currentSubject.code})` : ""}
+                  {item.subject.name}
+                  {item.subject.code ? ` (${item.subject.code})` : ""}
                 </Text>
               </View>
               <View style={styles.cardRow}>

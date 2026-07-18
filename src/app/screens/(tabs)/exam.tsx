@@ -4,7 +4,7 @@ import api from "@/utils/api";
 import { moderateScale, scaleSize, verticalScale } from "@/utils/responsive";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -23,6 +23,18 @@ import { router, useFocusEffect } from "expo-router";
 
 type RevisionTopic = { name: string; progress: number };
 type RevisionItem = { subject: string; topics: RevisionTopic[] };
+type SubjectOption = { id: string; name: string; code: string };
+
+const extractId = (item: any): string | undefined =>
+  item?._id || item?.id || item?.subjectId || undefined;
+
+const toSubjectOption = (item: any): SubjectOption | null => {
+  if (!item || typeof item === "string") return null;
+  const id = extractId(item);
+  const name = item?.name;
+  if (!id || !name) return null;
+  return { id: String(id), name: String(name), code: item?.code ? String(item.code) : "" };
+};
 
 const daysLeft = (date: string) => {
   const today = new Date();
@@ -37,19 +49,26 @@ const countdownColor = (days: number) => {
   return "#10B981";
 };
 
+const truncateName = (name?: string, max = 20) => {
+  if (!name) return "";
+  return name.length > max ? `${name.slice(0, max).trimEnd()}...` : name;
+};
+
 export default function ExamsScreen() {
   const [exams, setExams] = useState<any[]>([]);
   const [revisions, setRevisions] = useState<RevisionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
 
-  const [newSubject, setNewSubject] = useState("");
-  const [newCode, setNewCode] = useState("");
+  const [newSubject, setNewSubject] = useState<SubjectOption | null>(null);
   const [newDate, setNewDate] = useState<Date | null>(null);
   const [newVenue, setNewVenue] = useState("");
-  const [subjectOptions, setSubjectOptions] = useState<{ name: string; code: string }[]>([]);
-  const [showSubjectPicker, setShowSubjectPicker] = useState(false);
+
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showSubjectPicker, setShowSubjectPicker] = useState(false);
+
+  const [subjectOptions, setSubjectOptions] = useState<SubjectOption[]>([]);
+  const [subjectOptionsLoading, setSubjectOptionsLoading] = useState(true);
 
   const { user, loadUser } = useUser();
 
@@ -59,45 +78,50 @@ export default function ExamsScreen() {
 
   useEffect(() => {
     const loadSubjectOptions = async () => {
+      setSubjectOptionsLoading(true);
       try {
-        const profileClasses = (user?.classes || [])
-          .map((item: any) => ({
-            name: typeof item === "string" ? item : item?.name || "",
-            code: typeof item === "string" ? "" : item?.code || "",
-          }))
-          .filter((item: any) => item.name);
+        const profileClasses: SubjectOption[] = (user?.subjects || [])
+          .map(toSubjectOption)
+          .filter((s: SubjectOption | null): s is SubjectOption => !!s);
 
         const summaryRes = await api.get("/onboarding/summary");
-        const summaryClasses = (summaryRes?.data?.data?.classes || [])
-          .map((item: any) => ({
-            name: item?.name || "",
-            code: item?.code || "",
-          }))
-          .filter((item: any) => item.name);
+        const summaryClasses: SubjectOption[] = (summaryRes?.data?.data?.subjects || [])
+          .map(toSubjectOption)
+          .filter((s: SubjectOption | null): s is SubjectOption => !!s);
 
-        const merged = [...new Map([...profileClasses, ...summaryClasses].map((item) => [item.name, item])).values()];
-        setSubjectOptions(merged);
+        const previousSubjects: SubjectOption[] = exams
+          .map((item: any) => toSubjectOption(item.subject))
+          .filter((s: SubjectOption | null): s is SubjectOption => !!s);
+
+        const merged = [...profileClasses, ...summaryClasses, ...previousSubjects];
+        const deduped = Array.from(new Map(merged.map((s) => [s.id, s])).values());
+
+        if (deduped.length === 0) {
+          console.warn(
+            "[exams.tsx] subjectOptions is empty after mapping. Raw user.subjects:",
+            JSON.stringify(user?.subjects),
+            "Raw summary subjects:",
+            JSON.stringify(summaryRes?.data?.data?.subjects)
+          );
+        }
+
+        setSubjectOptions(deduped);
       } catch (error) {
-        const fallback = (user?.classes || [])
-          .map((item: any) => ({
-            name: typeof item === "string" ? item : item?.name || "",
-            code: "",
-          }))
-          .filter((item: any) => item.name);
+        const fallback: SubjectOption[] = (user?.classes || [])
+          .map((item: any) =>
+            typeof item === "string"
+              ? { id: "", name: item, code: "" }
+              : toSubjectOption(item)
+          )
+          .filter((s: SubjectOption | null): s is SubjectOption => !!s && !!s.name);
         setSubjectOptions(fallback);
+      } finally {
+        setSubjectOptionsLoading(false);
       }
     };
 
-    if (user) loadSubjectOptions();
-  }, [user]);
-
-  useEffect(() => {
-    if (!newSubject && subjectOptions.length > 0) {
-      const first = subjectOptions[0];
-      setNewSubject(first.name);
-      setNewCode(first.code || "");
-    }
-  }, [subjectOptions, newSubject]);
+    loadSubjectOptions();
+  }, [user, exams]);
 
   const loadExams = useCallback(async () => {
     try {
@@ -169,20 +193,25 @@ export default function ExamsScreen() {
   };
 
   const handleAdd = async () => {
-    if (!newSubject.trim() || !newDate || !newVenue.trim()) {
-      Alert.alert("Missing Fields", "Subject, date, and venue are required.");
+    if (!newSubject) {
+      Alert.alert("Error", "Please select a subject");
+      return;
+    }
+    if (!newDate) {
+      Alert.alert("Error", "Please select an exam date");
+      return;
+    }
+    if (!newVenue.trim()) {
+      Alert.alert("Error", "Please enter a venue");
       return;
     }
 
     try {
-      const payload = {
-        subject: newSubject.trim(),
+      const res = await api.post("/exam/add-exam", {
+        subjectId: newSubject.id,
         date: newDate.toISOString().split("T")[0],
         venue: newVenue.trim(),
-        ...(newCode && { code: newCode }),
-      };
-
-      const res = await api.post("/exam/add-exam", payload);
+      });
 
       if (res.data.success) {
         const updated = await api.get("/exam/get-exam");
@@ -201,15 +230,21 @@ export default function ExamsScreen() {
   const resetForm = () => {
     setShowForm(false);
     setShowSubjectPicker(false);
-    setNewSubject("");
-    setNewCode("");
+    setNewSubject(null);
     setNewDate(null);
     setNewVenue("");
   };
 
   const onChangeDate = (event: any, selectedDate?: Date) => {
-    setShowDatePicker(false);
-    if (selectedDate) setNewDate(selectedDate);
+    if (Platform.OS === "android") {
+      setShowDatePicker(false);
+    }
+
+    if (event.type === "dismissed") return;
+
+    if (selectedDate) {
+      setNewDate(selectedDate);
+    }
   };
 
   const sortedExams = [...exams].sort((a, b) => daysLeft(a.date) - daysLeft(b.date));
@@ -243,41 +278,55 @@ export default function ExamsScreen() {
               ) : (
                 sortedExams.map((exam, index) => {
                   const left = daysLeft(exam.date);
-                  const progress = getProgress(exam.subject?.name);
-
-                  console.log("examsprogress", progress)
+                  const subjectName =
+                    typeof exam.subject === "string" ? exam.subject : exam.subject?.name;
+                  const progress = getProgress(subjectName);
 
                   return (
                     <Pressable
-                      key={`${exam.code}-${exam.subject?.name}-${exam.date}-${index}`}
-                      onPress={() =>
+                      key={exam._id || `${exam.code}-${subjectName}-${exam.date}-${index}`}
+                      onPress={() => {
+                        const params = {
+                          examId: exam.id,
+                          subject: subjectName,
+                          subjectId: exam.subjectId,
+                          examDate: exam.date,
+                          venue: exam.venue,
+                        };
+
                         router.push({
                           pathname: "/screens/addRevision",
-                          params: {
-                            subject: exam.subject?.name,
-                            examDate: exam.date,
-
-                          },
-                        })
-                      }
+                          params,
+                        });
+                      }}
                       style={({ pressed }) => [
                         styles.card,
                         pressed && { opacity: 0.7 },
                       ]}
                     >
                       <View style={styles.topRow}>
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.subject}>
-                            {exam.subject?.name}
-                            {exam.subject?.code ? ` (${exam.subject.code})` : ""}
-                          </Text>
+                        <View style={{ flex: 1, minWidth: 0 }}>
+                          <View style={styles.subjectRow}>
+                            <Text
+                              style={styles.subject}
+                              numberOfLines={1}
+                              ellipsizeMode="tail"
+                            >
+                              {truncateName(subjectName)}
+                            </Text>
+                          </View>
 
-                          {!!exam.subject?.room && (
-                            <Text style={styles.code}>Room {exam.subject.room}</Text>
+                          {!!exam.subject?.code && (
+                            <View style={styles.codeRow}>
+                              <Text style={styles.code}>{exam.subject.code}</Text>
+                            </View>
                           )}
 
                           {!!exam.code && (
-                            <Text style={styles.code}>{exam.code}</Text>
+                            <View style={styles.codeRow}>
+                              <Ionicons name="barcode-outline" size={13} color="#7A8599" />
+                              <Text style={styles.code}>{exam.code}</Text>
+                            </View>
                           )}
                         </View>
 
@@ -334,8 +383,13 @@ export default function ExamsScreen() {
             <View style={styles.form}>
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Subject</Text>
-                <Pressable style={styles.pickerTrigger} onPress={() => setShowSubjectPicker(!showSubjectPicker)}>
-                  <Text style={styles.pickerText}>{newSubject || "Select a subject"}</Text>
+                <Pressable
+                  style={styles.pickerTrigger}
+                  onPress={() => setShowSubjectPicker(!showSubjectPicker)}
+                >
+                  <Text style={styles.pickerText}>
+                    {newSubject?.name || "Select a subject"}
+                  </Text>
                   <Ionicons
                     name={showSubjectPicker ? "chevron-up" : "chevron-down"}
                     size={18}
@@ -345,14 +399,20 @@ export default function ExamsScreen() {
 
                 {showSubjectPicker && (
                   <View style={styles.pickerBox}>
-                    {subjectOptions.length > 0 ? (
+                    {subjectOptionsLoading ? (
+                      <View style={{ padding: scaleSize(14) }}>
+                        <ActivityIndicator size="small" color={COLORS.blue} />
+                      </View>
+                    ) : subjectOptions.length > 0 ? (
                       subjectOptions.map((option) => (
                         <Pressable
-                          key={option.name}
-                          style={[styles.optionRow, newSubject === option.name && styles.optionRowActive]}
+                          key={option.id}
+                          style={[
+                            styles.optionRow,
+                            newSubject?.id === option.id && styles.optionRowActive,
+                          ]}
                           onPress={() => {
-                            setNewSubject(option.name);
-                            setNewCode(option.code || "");
+                            setNewSubject(option);
                             setShowSubjectPicker(false);
                           }}
                         >
@@ -360,7 +420,9 @@ export default function ExamsScreen() {
                         </Pressable>
                       ))
                     ) : (
-                      <Text style={styles.optionText}>No subjects available</Text>
+                      <Text style={[styles.optionText, { padding: scaleSize(14) }]}>
+                        No subjects available
+                      </Text>
                     )}
                   </View>
                 )}
@@ -368,7 +430,7 @@ export default function ExamsScreen() {
 
               <TextInput
                 placeholder="Code (optional)"
-                value={newCode}
+                value={newSubject?.code || ""}
                 editable={false}
                 style={[styles.input, styles.readOnlyField]}
               />
@@ -381,14 +443,14 @@ export default function ExamsScreen() {
 
               {showDatePicker && (
                 <DateTimePicker
-                  value={newDate || new Date()}
+                  value={newDate ?? new Date()}
                   mode="date"
                   minimumDate={new Date()}
-
-                  display="default"
+                  display={Platform.OS === "ios" ? "spinner" : "default"}
                   onChange={onChangeDate}
                 />
               )}
+
               <TextInput
                 placeholder="Venue"
                 value={newVenue}
@@ -460,8 +522,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: verticalScale(10),
   },
-  subject: { fontSize: moderateScale(18), fontWeight: "700", color: COLORS.navy },
-  code: { color: "#7A8599", marginTop: verticalScale(2), fontSize: moderateScale(14) },
+  subjectRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scaleSize(6),
+    minWidth: 0,
+  },
+  codeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scaleSize(4),
+    marginTop: verticalScale(4),
+  },
+  subject: { fontSize: moderateScale(18), fontWeight: "700", color: COLORS.navy, flexShrink: 1 },
+  code: { color: "#7A8599", fontSize: moderateScale(14) },
   badge: {
     paddingHorizontal: scaleSize(14),
     paddingVertical: verticalScale(8),

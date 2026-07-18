@@ -21,7 +21,20 @@ import { scaleSize, moderateScale, verticalScale } from "@/utils/responsive";
 import { router, useFocusEffect } from "expo-router";
 
 type AssignmentTopic = { name: string; progress: number };
-type TaskItem = { subject: string; topics: AssignmentTopic[] };
+type TaskItem = { assignmentId: string; subject: string; topics: AssignmentTopic[] };
+type SubjectOption = { id: string; name: string };
+
+
+const extractId = (item: any): string | undefined =>
+  item?._id || item?.id || item?.subjectId || undefined;
+
+const toSubjectOption = (item: any): SubjectOption | null => {
+  if (!item || typeof item === "string") return null;
+  const id = extractId(item);
+  const name = item?.name;
+  if (!id || !name) return null;
+  return { id: String(id), name: String(name) };
+};
 
 const daysLeft = (date: string) => {
   const today = new Date();
@@ -42,12 +55,14 @@ export default function AssignmentsScreen() {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
 
   const [newTitle, setNewTitle] = useState("");
-  const [newSubject, setNewSubject] = useState("");
   const [newDue, setNewDue] = useState<Date | null>(null);
-  const [subjectOptions, setSubjectOptions] = useState<string[]>([]);
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showSubjectPicker, setShowSubjectPicker] = useState(false);
+
+  const [subjectOptions, setSubjectOptions] = useState<SubjectOption[]>([]);
+  const [subjectOptionsLoading, setSubjectOptionsLoading] = useState(true);
+  const [newSubject, setNewSubject] = useState<SubjectOption | null>(null);
 
   const { user, loadUser } = useUser();
 
@@ -55,53 +70,48 @@ export default function AssignmentsScreen() {
     if (!user) loadUser();
   }, [user, loadUser]);
 
-
   useEffect(() => {
     const loadSubjectOptions = async () => {
+      setSubjectOptionsLoading(true);
       try {
-        const profileClasses = (user?.classes || [])
-          .map((item: any) => (typeof item === "string" ? item : item?.name || ""))
-          .filter(Boolean);
+        const profileClasses: SubjectOption[] = (user?.subjects || [])
+          .map(toSubjectOption)
+          .filter((s: SubjectOption | null): s is SubjectOption => !!s);
 
         const summaryRes = await api.get("/onboarding/summary");
-        const summaryClasses = (summaryRes?.data?.data?.classes || [])
-          .map((item: any) => item?.name || "")
-          .filter(Boolean);
+        const summaryClasses: SubjectOption[] = (summaryRes?.data?.data?.subjects || [])
+          .map(toSubjectOption)
+          .filter((s: SubjectOption | null): s is SubjectOption => !!s);
 
-        const previousSubjects = assignments
-          .map((item: any) =>
-            typeof item.subject === "string"
-              ? item.subject
-              : item.subject?.name || ""
-          )
-          .filter(Boolean);
-        const merged = [...new Set([...profileClasses, ...summaryClasses, ...previousSubjects])];
-        setSubjectOptions(merged);
+        const previousSubjects: SubjectOption[] = assignments
+          .map((item: any) => toSubjectOption(item.subject))
+          .filter((s: SubjectOption | null): s is SubjectOption => !!s);
+
+        const merged = [...profileClasses, ...summaryClasses, ...previousSubjects];
+        const deduped = Array.from(new Map(merged.map((s) => [s.id, s])).values());
+
+        if (deduped.length === 0) {
+          console.warn(
+            "[assignment.tsx] subjectOptions is empty after mapping. Raw user.subjects:",
+            JSON.stringify(user?.subjects),
+            "Raw summary subjects:",
+            JSON.stringify(summaryRes?.data?.data?.subjects)
+          );
+        }
+
+        setSubjectOptions(deduped);
       } catch (error) {
-        const fallback = (user?.classes || [])
-          .map((item: any) => (typeof item === "string" ? item : item?.name || ""))
-          .filter(Boolean);
+        const fallback: SubjectOption[] = (user?.classes || [])
+          .map(toSubjectOption)
+          .filter((s: SubjectOption | null): s is SubjectOption => !!s);
         setSubjectOptions(fallback);
+      } finally {
+        setSubjectOptionsLoading(false);
       }
     };
 
     loadSubjectOptions();
   }, [user, assignments]);
-
-  useEffect(() => {
-    if (showForm && !newSubject && subjectOptions.length > 0) {
-      const defaultSubject = user?.classes?.[0]
-        ? typeof user.classes[0] === "string"
-          ? user.classes[0]
-          : user.classes[0]?.name || ""
-        : (() => {
-          const found = assignments.find((a) => a?.subject)?.subject;
-          return typeof found === "string" ? found : found?.name || "";
-        })();
-
-      if (defaultSubject) setNewSubject(defaultSubject);
-    }
-  }, [showForm, subjectOptions, newSubject, user, assignments]);
 
   const loadAssignments = useCallback(async () => {
     try {
@@ -109,11 +119,12 @@ export default function AssignmentsScreen() {
       if (res.data.success) {
         setAssignments(res.data.data.assignments);
       }
+      
+
     } catch (error: any) {
       Alert.alert("Error", error?.response?.data?.message || "Failed to load assignments");
     }
   }, []);
-
 
   const loadTasks = useCallback(async () => {
     try {
@@ -126,7 +137,6 @@ export default function AssignmentsScreen() {
       console.error("Failed to load tasks", error);
     }
   }, []);
-
 
   useEffect(() => {
     const init = async () => {
@@ -148,43 +158,52 @@ export default function AssignmentsScreen() {
     }, [loadAssignments, loadTasks])
   );
 
-  const subjectProgress = useMemo(() => {
-    const map = new Map<string, number>();
-    const bySubject = new Map<string, AssignmentTopic[]>();
+ const assignmentProgress = useMemo(() => {
+  const map = new Map<string, number>();
+  const byAssignment = new Map<string, AssignmentTopic[]>();
 
-    tasks.forEach((r) => {
-      const key = (r.subject || "").toLowerCase();
-      const existing = bySubject.get(key) || [];
-      bySubject.set(key, [...existing, ...(r.topics || [])]);
-    });
+  tasks.forEach((r) => {
+    const key = r.assignmentId;
+    if (!key) return;
+    const existing = byAssignment.get(key) || [];
+    byAssignment.set(key, [...existing, ...(r.topics || [])]);
+  });
 
-    bySubject.forEach((topics, key) => {
-      if (topics.length === 0) {
-        map.set(key, 0);
-        return;
-      }
-      const avg = topics.reduce((sum, t) => sum + (t.progress || 0), 0) / topics.length;
-      map.set(key, Math.round(avg));
-    });
+  byAssignment.forEach((topics, key) => {
+    if (topics.length === 0) {
+      map.set(key, 0);
+      return;
+    }
+    const avg = topics.reduce((sum, t) => sum + (t.progress || 0), 0) / topics.length;
+    map.set(key, Math.round(avg));
+  });
 
-    return map;
-  }, [tasks]);
+  return map;
+}, [tasks]);
 
-  const getProgress = (subjectName?: string) => {
-    if (!subjectName) return 0;
-    return subjectProgress.get(subjectName.toLowerCase()) ?? 0;
-  };
+const getProgress = (assignmentId?: string) => {
+  if (!assignmentId) return 0;
+  return assignmentProgress.get(assignmentId) ?? 0;
+};
 
   const handleAdd = async () => {
-    if (!newTitle.trim() || !newSubject || !newDue) {
-      Alert.alert("Missing Fields", "Title, subject, and due date are required.");
+    if (!newSubject) {
+      Alert.alert("Error", "Please select a subject");
+      return;
+    }
+    if (!newTitle.trim()) {
+      Alert.alert("Error", "Please enter a title");
+      return;
+    }
+    if (!newDue) {
+      Alert.alert("Error", "Please select a due date");
       return;
     }
 
     try {
       const res = await api.post("/assignment/add-assignment", {
         title: newTitle.trim(),
-        subject: newSubject,
+        subjectId: newSubject.id,
         due: newDue.toISOString().split("T")[0],
       });
 
@@ -206,7 +225,7 @@ export default function AssignmentsScreen() {
     setShowForm(false);
     setShowSubjectPicker(false);
     setNewTitle("");
-    setNewSubject("");
+    setNewSubject(null);
     setNewDue(null);
   };
 
@@ -233,7 +252,6 @@ export default function AssignmentsScreen() {
 
   const sorted = [...assignments].sort((a, b) => daysLeft(a.due) - daysLeft(b.due));
 
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#F6F8FC" }}>
       <KeyboardAvoidingView
@@ -259,34 +277,41 @@ export default function AssignmentsScreen() {
                       ? assignment.subject
                       : assignment.subject?.name;
 
-                  const progress = getProgress(subjectName);
+                  const progress = getProgress(assignment.id);
 
                   return (
-                    <View key={assignment.createdAt} style={styles.card}>
+                    <View key={assignment._id || assignment.createdAt || index} style={styles.card}>
                       <Pressable
-                        onPress={() =>
+                        onPress={() => {
+                          const navParams = {
+                            assignmentId: assignment.id || assignment.createdAt,
+                            title: assignment.title,
+                            subject:
+                              typeof assignment.subject === "string"
+                                ? assignment.subject
+                                : assignment.subject?.name || "",
+                            subjectId:
+                              typeof assignment.subject === "string"
+                                ? ""
+                                : assignment.subject?._id ||
+                                  assignment.subject?.id ||
+                                  "",
+                            due: assignment.due,
+                            progress: String(assignment.progress || 0),
+                          };
                           router.push({
                             pathname: "/screens/AddAsignmentTasks",
-                            params: {
-                              assignmentId: assignment._id || assignment.createdAt,
-                              title: assignment.title,
-                              subject:
-                                typeof assignment.subject === "string"
-                                  ? assignment.subject
-                                  : assignment.subject?.name || "",
-                              due: assignment.due,
-                              progress: String(assignment.progress || 0),
-                            },
-                          })
-                        }
-                        style={({ pressed }) => [
-                          pressed && { opacity: 0.7 },
-                        ]}
+                            params: navParams,
+                          });
+                        }}
+                        style={({ pressed }) => [pressed && { opacity: 0.7 }]}
                       >
                         <View style={styles.topRow}>
                           <View>
                             <Text style={styles.subject}>
-                              {typeof assignment.subject === "string" ? assignment.subject : assignment.subject?.name}
+                              {typeof assignment.subject === "string"
+                                ? assignment.subject
+                                : assignment.subject?.name}
                             </Text>
                             <Text style={styles.title}>{assignment.title}</Text>
                           </View>
@@ -301,17 +326,10 @@ export default function AssignmentsScreen() {
                         </View>
 
                         <View style={styles.progressBackground}>
-                          <View
-                            style={[
-                              styles.progressFill,
-                              { width: `${progress}%` },
-                            ]}
-                          />
+                          <View style={[styles.progressFill, { width: `${progress}%` }]} />
                         </View>
 
-                        <Text style={styles.progressText}>
-                          Revision {progress}%
-                        </Text>
+                        <Text style={styles.progressText}>Revision {progress}%</Text>
                       </Pressable>
                     </View>
                   );
@@ -333,7 +351,9 @@ export default function AssignmentsScreen() {
                   style={styles.pickerTrigger}
                   onPress={() => setShowSubjectPicker(!showSubjectPicker)}
                 >
-                  <Text style={styles.pickerText}>{newSubject || "Select a subject"}</Text>
+                  <Text style={styles.pickerText}>
+                    {newSubject?.name || "Select a subject"}
+                  </Text>
                   <Ionicons
                     name={showSubjectPicker ? "chevron-up" : "chevron-down"}
                     size={18}
@@ -343,21 +363,30 @@ export default function AssignmentsScreen() {
 
                 {showSubjectPicker && (
                   <View style={styles.pickerBox}>
-                    {subjectOptions.length > 0 ? (
+                    {subjectOptionsLoading ? (
+                      <View style={{ padding: scaleSize(14) }}>
+                        <ActivityIndicator size="small" color={COLORS.blue} />
+                      </View>
+                    ) : subjectOptions.length > 0 ? (
                       subjectOptions.map((option) => (
                         <Pressable
-                          key={option}
-                          style={[styles.optionRow, newSubject === option && styles.optionRowActive]}
+                          key={option.id}
+                          style={[
+                            styles.optionRow,
+                            newSubject?.id === option.id && styles.optionRowActive,
+                          ]}
                           onPress={() => {
                             setNewSubject(option);
                             setShowSubjectPicker(false);
                           }}
                         >
-                          <Text style={styles.optionText}>{option}</Text>
+                          <Text style={styles.optionText}>{option.name}</Text>
                         </Pressable>
                       ))
                     ) : (
-                      <Text style={styles.optionText}>No subjects available</Text>
+                      <Text style={[styles.optionText, { padding: scaleSize(14) }]}>
+                        No subjects available
+                      </Text>
                     )}
                   </View>
                 )}
@@ -374,7 +403,6 @@ export default function AssignmentsScreen() {
                   value={newDue ?? new Date()}
                   mode="date"
                   minimumDate={new Date()}
-
                   display={Platform.OS === "ios" ? "spinner" : "default"}
                   onChange={onChangeDate}
                 />
@@ -462,7 +490,12 @@ const styles = StyleSheet.create({
     marginTop: verticalScale(18),
   },
   progressFill: { height: verticalScale(10), backgroundColor: COLORS.blue, borderRadius: scaleSize(5) },
-  progressText: { marginTop: verticalScale(8), fontWeight: "600", color: COLORS.navy, fontSize: moderateScale(14) },
+  progressText: {
+    marginTop: verticalScale(8),
+    fontWeight: "600",
+    color: COLORS.navy,
+    fontSize: moderateScale(14),
+  },
 
   emptyContainer: {
     flex: 1,
@@ -496,7 +529,12 @@ const styles = StyleSheet.create({
     marginBottom: verticalScale(14),
   },
   inputContainer: { marginBottom: verticalScale(16) },
-  label: { fontSize: moderateScale(14), fontWeight: "600", color: COLORS.navy, marginBottom: verticalScale(6) },
+  label: {
+    fontSize: moderateScale(14),
+    fontWeight: "600",
+    color: COLORS.navy,
+    marginBottom: verticalScale(6),
+  },
   pickerTrigger: {
     borderWidth: 1,
     borderColor: "#ccc",

@@ -1,5 +1,4 @@
 import COLORS from "@/constants/color";
-import { useOnboarding } from "@/context/onboardingContext";
 import api from "@/utils/api";
 import { moderateScale, scaleSize, verticalScale } from "@/utils/responsive";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -29,7 +28,7 @@ let idCounter = 0;
 const makeId = () => `subj_${Date.now()}_${idCounter++}`;
 
 export default function AddClasses() {
-  const { classes, setClasses } = useOnboarding();
+  const [classes, setClasses] = useState<Subject[]>([]);
 
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,7 +42,7 @@ export default function AddClasses() {
   useEffect(() => {
     const loadSubjects = async () => {
       try {
-        const res = await api.get("/onboarding/classes");
+        const res = await api.get("/timetable/get-classes");
         if (res.data.success) {
           const loaded = (res.data.data.classes ?? []).map((c: any) => ({
             id: c.id ?? makeId(),
@@ -116,11 +115,11 @@ export default function AddClasses() {
         return;
       }
 
-      const res = await api.post("/onboarding/add-class", { classes });
+      const res = await api.post("/timetable/add-subjects", { classes });
 
-      
+
       if (res.data.success) {
-        router.push("/screens/onBoarding/timetable");
+        router.push("/screens/timetable/add-timetable");
       }
     } catch (error: any) {
       Alert.alert("Error", error?.response?.data?.message || "Failed to save classes");
