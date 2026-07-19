@@ -9,12 +9,15 @@ import { AddButton } from "@/components";
 import AddMenuBottomSheet from "@/components/TimetableActionSheet";
 import WeekView from "@/components/weekViewx";
 import TodayView from "@/components/todayView";
-import { useFocusEffect } from "expo-router";
+import { Stack, useFocusEffect, useRouter } from "expo-router";
 import { ScrollView } from "react-native";
 import { mapTimetable } from "@/types/timetable";
+import { Ionicons } from "@expo/vector-icons";
+
 type Tab = "today" | "week";
 
 export default function WeeklyCalendar() {
+  const router = useRouter();
   const { timetable, setTimetable } = useOnboarding();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -42,12 +45,30 @@ export default function WeeklyCalendar() {
   );
   const mappedTimetable = mapTimetable(timetable);
 
-
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top"]}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Timetable</Text>
+    <SafeAreaView style={styles.safeArea} edges={["bottom"]}>
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: "My Timetable",
+          headerBackButtonDisplayMode: "minimal",
+          headerTintColor: COLORS.navy,
+          headerStyle: { backgroundColor: "#F4F7FC" },
+          headerShadowVisible: false,
+          headerTitleAlign: "center",
+          headerLeft: () => (
+            <TouchableOpacity
+              onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}
+              hitSlop={10}
+              style={{ paddingRight: scaleSize(12) }}
+            >
+              <Ionicons name="chevron-back" size={moderateScale(26)} color={COLORS.navy} />
+            </TouchableOpacity>
+          ),
+        }}
+      />
 
+      <View style={styles.header}>
         <View style={styles.tabBar}>
           {(["today", "week"] as Tab[]).map((t) => (
             <TouchableOpacity
@@ -97,14 +118,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: scaleSize(20),
     paddingTop: verticalScale(8),
     paddingBottom: verticalScale(12),
-  },
-  headerTitle: {
-    fontSize: moderateScale(24),
-    fontWeight: "800",
-    color: COLORS.navy,
-    letterSpacing: -0.4,
-    marginBottom: verticalScale(12),
-    textAlign: "center"
   },
   tabBar: {
     flexDirection: "row",

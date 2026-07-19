@@ -1,9 +1,6 @@
-
-import AssignmentForm from "@/components/assignment/AssignmentForm";
-import AssignmentsList from "@/components/assignment/AssignmetList";
 import COLORS from "@/constants/color";
-import { useAssignments } from "@/utils/useassigment"
 import { moderateScale, scaleSize, verticalScale } from "@/utils/responsive";
+import { useAssignments } from "@/utils/useassigment";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -17,6 +14,8 @@ import {
   Text,
   View,
 } from "react-native";
+import AssignmentForm from "./AssignmentForm";
+import AssignmentsList from "./AssignmetList";
 
 export default function AssignmentsScreen() {
   const { assignments, loading, subjectOptions, subjectOptionsLoading, getProgress, addAssignment } = useAssignments();

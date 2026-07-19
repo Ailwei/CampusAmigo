@@ -58,14 +58,11 @@ export default function EditSubjectScreen() {
         ]);
       }
     } catch (error: any) {
-
-  Alert.alert(
-    "Error",
-    error.response?.data?.message || "Failed to update subject."
-  );
+  Alert.alert("Error", error?.response?.data?.message || "Failed to update subject.");
+} finally {
+  setSaving(false);
 }
-  };
-
+  }
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.subtitle}>

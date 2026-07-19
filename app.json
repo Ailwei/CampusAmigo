@@ -5,6 +5,8 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "campusamigo",
+    "icon": "./assets/images/logo.png",
+
     "extra": {
   "BASE_URL": "http://10.0.2.2:5001/campus-amigo/us-central1/api",
   "WEB_CLIENT_ID": "273611478058-hc5puudslpnhskl19ma0n2n2riv38s6j.apps.googleusercontent.com",

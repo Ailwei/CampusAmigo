@@ -24,15 +24,31 @@ export type ClassSlot = {
 };
 
 const DAY_MAP: Record<string, string> = {
-  Sun: "Sunday",
-  Mon: "Monday",
-  Tue: "Tuesday",
-  Wed: "Wednesday",
-  Thu: "Thursday",
-  Fri: "Friday",
-  Sat: "Saturday",
+  sun: "Sunday",
+  mon: "Monday",
+  tue: "Tuesday",
+  wed: "Wednesday",
+  thu: "Thursday",
+  fri: "Friday",
+  sat: "Saturday",
 };
 
+const FULL_DAYS = [
+  "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
+];
+
+function normalizeDay(raw: string): string {
+  const clean = (raw || "").trim().toLowerCase();
+
+  const fullMatch = FULL_DAYS.find((d) => d.toLowerCase() === clean);
+  if (fullMatch) return fullMatch;
+
+  const abbrKey = clean.slice(0, 3);
+  if (DAY_MAP[abbrKey]) return DAY_MAP[abbrKey];
+
+  console.warn("mapTimetable: unrecognized day value ->", raw);
+  return raw;
+}
 
 export function mapTimetable(raw: ClassSlot[]): ClassEntry[] {
   return raw.map((slot) => {
@@ -46,7 +62,7 @@ export function mapTimetable(raw: ClassSlot[]): ClassEntry[] {
     const room = subj?.venue || subj?.room || slot.venue || undefined;
 
     return {
-      day: DAY_MAP[slot.day] || slot.day,
+      day: normalizeDay(slot.day),
       subject: subjectName,
       code,
       startTime: slot.startTime,
